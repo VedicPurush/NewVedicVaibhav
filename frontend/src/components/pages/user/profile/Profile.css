@@ -1,0 +1,16 @@
+.ant-menu-item {
+    border-bottom: 1px solid #e0e0e0; /* Light grey line */
+}
+
+.ant-menu-item:last-child {
+    border-bottom: none; /* Remove border from the last item */
+}
+
+/* Selected item background and text color */
+.ant-menu-item-selected {
+    background-color: #FF7722 !important; /* Orange background */
+    color: white !important; /* White text */
+}
+
+
+

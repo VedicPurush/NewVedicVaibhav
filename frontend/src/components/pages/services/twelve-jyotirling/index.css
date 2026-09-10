@@ -1,0 +1,61 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .font-display {
+    font-family: 'Cinzel', serif;
+  }
+
+  .font-elegant {
+    font-family: 'Cormorant Garamond', serif;
+  }
+
+  .font-body {
+    font-family: 'Poppins', sans-serif;
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(135deg, hsl(43 85% 55%), hsl(43 80% 70%), hsl(43 85% 55%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .bg-gradient-temple {
+    background: linear-gradient(180deg, hsl(30 25% 6%) 0%, hsl(30 20% 10%) 50%, hsl(0 65% 25% / 0.15) 100%);
+  }
+
+  .bg-gradient-gold {
+    background: linear-gradient(135deg, hsl(43 70% 40%), hsl(43 85% 55%), hsl(43 80% 70%), hsl(43 85% 55%), hsl(43 70% 40%));
+  }
+
+  .bg-gradient-maroon {
+    background: linear-gradient(135deg, hsl(0 70% 18%), hsl(0 65% 25%), hsl(0 60% 30%));
+  }
+
+  .border-ornate {
+    border: 1px solid hsl(43 85% 55% / 0.3);
+    box-shadow: inset 0 0 20px hsl(43 85% 55% / 0.05), 0 0 15px hsl(43 85% 55% / 0.08);
+  }
+
+  .shadow-gold {
+    box-shadow: 0 4px 30px hsl(43 85% 55% / 0.15), 0 1px 3px hsl(43 85% 55% / 0.1);
+  }
+
+  .shadow-gold-lg {
+    box-shadow: 0 10px 50px hsl(43 85% 55% / 0.2), 0 4px 15px hsl(43 85% 55% / 0.1);
+  }
+
+  .divider-ornate {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, hsl(43 85% 55% / 0.5), hsl(43 85% 55%), hsl(43 85% 55% / 0.5), transparent);
+  }
+
+  .glow-gold {
+    text-shadow: 0 0 20px hsl(43 85% 55% / 0.4), 0 0 40px hsl(43 85% 55% / 0.2);
+  }
+}

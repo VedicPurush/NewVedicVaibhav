@@ -1,0 +1,161 @@
+/* ── Gau Seva Page – Scoped CSS ──────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi:ital@0;1&family=Poppins:wght@400;500;600;700;800&display=swap');
+
+/* ── CSS tokens ──────────────────────────────────────────────────────────── */
+:root {
+  --gs-saffron:   #ff6b35;
+  --gs-orange:    #f7931e;
+  --gs-gold:      #f5a623;
+  --gs-cream:     #fff8f0;
+  --gs-warm:      #fff3e0;
+  --gs-brown:     #7c4a1e;
+  --gs-green:     #2d7a4e;
+  --gs-green-lt:  #e8f5e9;
+  --gs-shadow:    rgba(255, 107, 53, 0.15);
+}
+
+/* ── Background ──────────────────────────────────────────────────────────── */
+.gs-page {
+  background: linear-gradient(180deg, #fff8f0 0%, #fff3e0 100%);
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ── Hero gradient overlay ──────────────────────────────────────────────── */
+.gs-hero-overlay {
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 107, 53, 0.65) 0%,
+    rgba(247, 147, 30, 0.40) 60%,
+    #fff8f0 100%
+  );
+}
+
+/* ── Saffron gradient ────────────────────────────────────────────────────── */
+.gs-gradient-saffron {
+  background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+}
+
+/* ── Package card highlights ────────────────────────────────────────────── */
+.gs-card-highlighted {
+  box-shadow: 0 8px 32px rgba(255, 107, 53, 0.28), 0 2px 8px rgba(0,0,0,0.08);
+  transform: translateY(-4px);
+}
+
+.gs-card-highlighted:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 40px rgba(255, 107, 53, 0.35);
+}
+
+/* ── Corner ribbon badge ────────────────────────────────────────────────── */
+.gs-ribbon-wrap {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 96px;
+  height: 96px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.gs-ribbon {
+  position: absolute;
+  width: 130px;
+  top: 20px;
+  right: -34px;
+  transform: rotate(45deg);
+  padding: 5px 0;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: #fff;
+}
+
+.gs-ribbon-saffron { background: linear-gradient(135deg, #ff6b35, #e04e1b); }
+.gs-ribbon-gold    { background: linear-gradient(135deg, #f5a623, #d4890a); }
+.gs-ribbon-green   { background: linear-gradient(135deg, #43a047, #2d7a4e); }
+.gs-ribbon-emerald { background: linear-gradient(135deg, #00897b, #00695c); }
+
+/* ── Card themes ─────────────────────────────────────────────────────────── */
+.gs-card-theme-0 { background: linear-gradient(160deg, #fff8f0 0%, #ffecd2 60%, #ffd9a8 100%); }
+.gs-card-theme-1 { background: linear-gradient(160deg, #fffdf5 0%, #fff3d0 60%, #ffe08a 100%); }
+.gs-card-theme-2 { background: linear-gradient(160deg, #f0fff4 0%, #d4f5e2 60%, #a8e6c0 100%); }
+.gs-card-theme-3 { background: linear-gradient(160deg, #fff9f0 0%, #fff0d0 60%, #ffd580 100%); }
+.gs-card-theme-4 { background: linear-gradient(160deg, #f0fdf9 0%, #ccf2e7 60%, #80d5be 100%); }
+
+/* ── Feature check ───────────────────────────────────────────────────────── */
+.gs-check { color: #2d7a4e; font-weight: 800; }
+
+/* ── Floating CTA ────────────────────────────────────────────────────────── */
+.gs-floating-cta {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  padding: 10px 16px 14px;
+  box-shadow: 0 -2px 16px rgba(0,0,0,0.1);
+  z-index: 90;
+}
+
+/* ── Animations ──────────────────────────────────────────────────────────── */
+@keyframes gs-pulse {
+  0%, 100% { box-shadow: 0 4px 20px rgba(255, 107, 53, 0.3); }
+  50%       { box-shadow: 0 6px 28px rgba(255, 107, 53, 0.55); }
+}
+
+.gs-pulse { animation: gs-pulse 2s ease-in-out infinite; }
+
+@keyframes gs-float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-6px); }
+}
+
+.gs-float { animation: gs-float 3s ease-in-out infinite; }
+
+/* ── Section title ───────────────────────────────────────────────────────── */
+.gs-section-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #3d1c02;
+  position: relative;
+  padding-bottom: 10px;
+}
+
+.gs-section-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 40px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #ff6b35, #f7931e);
+}
+
+/* ── Stars ───────────────────────────────────────────────────────────────── */
+.gs-star { color: #f5a623; }
+
+/* ── Scrollbar hide for horizontal scroll ────────────────────────────────── */
+.gs-scroll-x::-webkit-scrollbar { display: none; }
+.gs-scroll-x { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Devanagari text ─────────────────────────────────────────────────────── */
+.gs-devanagari {
+  font-family: 'Tiro Devanagari Hindi', 'Noto Sans Devanagari', serif;
+}
+
+/* ── Trust bar ───────────────────────────────────────────────────────────── */
+.gs-trust-bar {
+  background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+  color: #fff;
+  overflow: hidden;
+}
+
+/* ── Bottom padding for floating CTA ────────────────────────────────────── */
+.gs-bottom-pad { padding-bottom: 80px; }

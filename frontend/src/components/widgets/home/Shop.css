@@ -1,0 +1,8 @@
+.product-card {
+    transition: transform 0.3s ease;
+    position: relative; /* To ensure the elements inside can be positioned absolutely */
+  }
+
+.product-card:hover {
+    transform: scale(1.03); /* Scale the card on hover */
+  }

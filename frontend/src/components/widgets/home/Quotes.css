@@ -1,0 +1,61 @@
+.carousel-container {
+  width: 100%;
+  height: 100%; /* Make sure height is sufficient */
+  position: relative;
+  perspective: 4000px; /* Controls the 3D depth */
+}
+
+.card-stack {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  display: flex;
+  flex-direction: column; /* Adjust to column for vertical stacking */
+  justify-content: center; /* Adjust content alignment */
+  align-items: center;
+}
+
+.card {
+  position: absolute;
+  width: 80%; /* Adjust the width as needed */
+  height: 80%; /* Take 80% of the Col's height to maintain aspect ratio */
+  border-radius: 16px;
+  transition: transform 0.6s ease, opacity 0.6s ease;
+  transform-style: preserve-3d;
+  background-color: #F8F7F4;
+}
+
+.card img {
+  width: 100%;
+  object-fit: cover;
+}
+
+.card.inactive {
+  opacity: 0.2; /* Reduce visibility of inactive cards */
+}
+
+.card.active {
+  opacity: 1; /* Make the active card fully visible */
+  z-index: 2; /* Ensure the active card is on top */
+}
+
+.carousel-controls {
+  position: absolute;
+  top: 50%;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  transform: translateY(-50%);
+}
+
+.carousel-control-icon {
+  font-size: 24px;
+  cursor: pointer;
+  color: rgba(0, 0, 0, 0.5);
+  transition: color 0.3s ease;
+}
+
+.carousel-control-icon:hover {
+  color: rgba(0, 0, 0, 0.8);
+}

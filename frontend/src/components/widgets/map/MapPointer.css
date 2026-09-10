@@ -1,0 +1,56 @@
+.pointer {
+    position: absolute;
+    width: 3%;
+    height: 5%;
+    animation: pulsate 1s ease-in-out forwards;
+}
+
+.pointer-ripple {
+    animation: ripple 1.5s infinite;
+    position: absolute;
+    color: rgba(255, 255, 255, 0.7);
+    top: 50%;
+    left: 0%;
+    z-index: -1;
+}
+
+.pointer-data {
+    position: absolute;
+    top: -200%;
+    left: 200%;
+    width: 10vw;
+    /* padding: 70%; */
+    padding: 0;
+    border-radius: 50px;
+    display: none;
+    cursor: pointer;
+}
+
+.pointer:hover .pointer-data {
+    display: block !important;
+}
+
+@keyframes pulsate {
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes ripple {
+    0% {
+        transform: scale(0);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1.7);
+        opacity: 0;
+    }
+}

@@ -1,0 +1,205 @@
+/* NewJyotirlingChadhavaPaymentPage.css */
+
+.payment-page-container {
+  background-color: #f7f7f7;
+  color: #1a1a1a;
+  font-family: 'Inter', -apple-system, sans-serif;
+  min-height: 100vh;
+  padding-bottom: 5rem;
+  max-width: 480px;
+  margin: 0 auto;
+  background: #ffffff;
+  box-shadow: 0 0 15px rgba(0,0,0,0.05);
+  overflow-x: hidden;
+  padding-top: 1rem;
+}
+
+.summary-section {
+  padding: 0 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.summary-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+.summary-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  background: #fffdfa;
+}
+
+.selected-temples-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4b5563;
+  margin-bottom: 0.5rem;
+}
+
+.temple-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.temple-tag {
+  font-size: 0.8rem;
+  color: #0d52a2;
+  border: 1px solid #93c5fd;
+  border-radius: 1rem;
+  padding: 0.15rem 0.5rem;
+  background-color: #eff6ff;
+}
+
+.summary-table {
+  width: 100%;
+  font-size: 0.9rem;
+  border-collapse: collapse;
+}
+
+.summary-table th {
+  text-align: left;
+  font-weight: 600;
+  color: #1f2937;
+  padding-bottom: 0.5rem;
+}
+
+.summary-table td {
+  padding-bottom: 0.5rem;
+  color: #6b7280;
+}
+
+.summary-table td.total-col {
+  text-align: right;
+  color: #1f2937;
+}
+
+.summary-divider {
+  border-top: 1px dashed #d1d5db;
+  margin: 0.5rem 0;
+}
+
+.sub-total-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.savings-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #059669;
+  font-weight: 600;
+  margin-top: 0.25rem;
+  align-items: center;
+}
+
+.savings-icon {
+  background: #059669;
+  color: white;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  margin-right: 4px;
+  font-size: 8px;
+}
+
+.payable-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #d97706;
+  margin-top: 0.75rem;
+  align-items: center;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 0.75rem;
+}
+
+.sticky-bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  background-color: #173963;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
+  z-index: 50;
+  border-top-left-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
+}
+
+.sticky-price-info {
+  display: flex;
+  flex-direction: column;
+  color: white;
+}
+
+.sticky-total-price {
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.sticky-total-label {
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.sticky-btn {
+  background: #ffffff;
+  color: #173963;
+  font-weight: 700;
+  font-size: 1.1rem;
+  border: 1px solid #ffffff;
+  border-radius: 2rem;
+  padding: 0.6rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.sticky-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  background: #f8fafc;
+}
+
+.sticky-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.sticky-btn:disabled {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Ensure empty spaces have enough bottom padding to show the bar */
+.bottom-spacer {
+  height: 80px;
+}

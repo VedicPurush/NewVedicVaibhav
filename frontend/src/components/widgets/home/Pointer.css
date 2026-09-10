@@ -1,0 +1,22 @@
+.pointer {
+    position: absolute;
+    width: 3%;
+    height: 5%;
+}
+
+.pointer-data {
+    position: absolute;
+    top: -150%;
+    left: 90%;
+    width: 300%;
+    padding: 30%;
+    border-radius: 10px;
+    color: white;
+    background-color: #F24E1E;
+    display: none;
+    cursor: pointer;
+}
+
+.pointer:hover .pointer-data {
+    display: block !important;
+}

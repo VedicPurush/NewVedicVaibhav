@@ -1,0 +1,65 @@
+/* NOTE: the class prefix is vv-section-heading, NOT section-header. Navbar.css
+   already owns a global .section-header (with a ::before underline bar and 16px
+   side padding) and Navbar renders on every page, so that name silently
+   restyled these headings — a stray 24x2 orange line under the title and a
+   16px left shift out of alignment with the cards. Do not rename back.
+
+   Shared section heading — the icon + title rule used above every homepage
+   strip (chadhava, poojas, personalised pooja) and the review/video sections.
+   Lives with the component so any section can use it without pulling in a
+   feature stylesheet; these rules previously sat in ReviewPuja.css, which is
+   lazy-loaded and therefore not present when the homepage strips render. */
+
+/* No margin here on purpose. Callers pass their own spacing (mt-4 mb-2 etc.),
+   and a base margin would compete with those Tailwind utilities — which of the
+   two wins depends on stylesheet order, so the gap above a heading could change
+   between dev and a production build. */
+.vv-section-heading {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+/* flex:1 rather than width:100% so an optional right-hand action (the "See All"
+   pill) keeps its intrinsic width instead of being squeezed to nothing. With no
+   action present this behaves identically to the old width:100%. */
+.vv-section-heading__left {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.vv-section-heading__icon {
+  height: 34px;
+  width: auto;
+  flex-shrink: 0;
+}
+
+/* #7C2D12 is the heading colour used across the site (the puja hero h1, the
+   section titles). Near-black read as a different family of type. */
+.vv-section-heading__title {
+  margin: 0;
+  color: #7c2d12;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  font-family: Poppins, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-size: 16px;
+}
+
+.vv-section-heading__action {
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .vv-section-heading__icon {
+    height: 48px;
+  }
+
+  .vv-section-heading__title {
+    font-size: 20px;
+  }
+}

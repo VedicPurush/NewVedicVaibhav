@@ -1,0 +1,22 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+
+# secrets — .env holds the mode switch, .env.<mode> holds that mode's
+# credentials. None of them are committed; only the *.example templates are.
+.env
+.env.development
+.env.production
+.env.local
+.env.*.local
+!.env.example
+!.env.development.example
+!.env.production.example
+
+# logs
+*.log
+
+# OS
+.DS_Store

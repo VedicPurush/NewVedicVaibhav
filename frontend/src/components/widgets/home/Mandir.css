@@ -1,0 +1,21 @@
+.hover-mandir {
+    cursor: pointer;
+    transform: scale(1);
+    transition: transform 0.2s ease-in;
+}
+
+.hover-mandir:hover {
+    transform: scale(1.1);
+    transition: transform 0.2s ease-out;
+}
+.hover-mandir1 {
+    cursor: pointer;
+    transform: scale(1);
+    transition: transform 0.2s ease-in;
+    /* overflow: hidden; */
+}
+
+.hover-mandir1:hover {
+    transform: scale(1.05);
+    transition: transform 0.2s ease-out;
+}

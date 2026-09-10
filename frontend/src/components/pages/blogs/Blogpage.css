@@ -1,0 +1,20 @@
+div::-webkit-scrollbar {
+    height: 4px;
+    /* Adjust the height for horizontal scrollbar */
+}
+
+div::-webkit-scrollbar-thumb {
+    background-color: #FF6505;
+    /* Scrollbar thumb color */
+    border-radius: 10px;
+}
+
+div::-webkit-scrollbar-thumb:hover {
+    background-color: #FF6505;
+    /* Scrollbar thumb color on hover */
+}
+
+div::-webkit-scrollbar-track {
+    background-color: #f1f1f1;
+    /* Scrollbar track color */
+}

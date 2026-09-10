@@ -1,0 +1,1068 @@
+/* The header bar itself is transparent at every scroll position, so the links
+   need a surface of their own to stay readable — against the site background
+   artwork at rest, and against page content passing underneath once scrolled.
+   width: fit-content is what makes the pill hug the links instead of spanning
+   the whole column. */
+.navbar-content {
+  display: flex;
+  /* justify-content: space-between; */
+  /* Fixed gap, not a percentage: with a fit-content width a % gap resolves
+     against the pill's own width, which is what it is trying to compute. */
+  gap: 20px;
+
+  align-items: center;
+  justify-content: center;
+  /* font-style: italic; */
+  font-weight: 300;
+
+  /* Hug the links rather than a fixed 80% — at larger link text a fixed width
+     forced the labels to wrap ("Book Pooja" onto two lines). max-width keeps
+     it inside its column on narrower desktops. */
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  height: auto;
+  margin: 6px auto;
+  padding: 8px 24px;
+  border-radius: 999px;
+
+  /* Flat fill, no gradient. #C2410C is Tailwind's orange-700 — the same colour
+     as the "Participate Now" button in the Upcoming Chadhava section, so the
+     pill matches a control the page already uses rather than introducing a
+     shade of its own.
+
+     The premium feel comes from the edges, not the fill: a warm gold hairline
+     instead of a white one (picked up from the #c9972c ornate rules on the puja
+     page), an inset highlight along the top edge that reads as a lit bevel, and
+     a drop shadow tinted with a deeper orange so the pill sits in warm light
+     rather than grey. */
+  background: #ff6505;
+  border: 1px solid rgba(255, 209, 148, 0.38);
+  box-shadow:
+    0 6px 20px rgba(154, 52, 18, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: box-shadow 0.25s ease, background 0.25s ease;
+}
+
+/* Once scrolled the pill's shadow deepens so it lifts off the frosted bar now
+   sitting behind it.
+
+   No backdrop-filter here: the fill above is fully opaque, so there is no
+   backdrop to see through and a blur on this element would render nothing while
+   still costing a compositing pass on every scroll frame — and it would be a
+   second, nested backdrop-filter inside .vv-header's. The glass effect lives on
+   the shell (.vv-header.scrolled), which is translucent and can actually show
+   it. */
+.navbar-content.scrolled {
+  background: #ff6505;
+  box-shadow:
+    0 10px 28px rgba(124, 45, 18, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+/* Clearance for the fixed header (used by components/layout/Layout.tsx).
+   The header is position:fixed, so it is out of flow and the page content needs
+   a spacer of exactly its height. That height is not a constant:
+
+     - the announcement bar is a fixed 32px on desktop, 36px on mobile;
+     - the logo column is antd's 2/24 of a Row whose content box is 94% of the
+       viewport (the Row's 3% side padding, see Navbar.tsx), and the image holds
+       its 828x640 aspect — so the logo's height grows with the viewport at
+       0.94 x (2/24) x (640/828) ~= 6.05vw;
+     - the nav pill is ~62px tall and is the taller of the two below ~1060px,
+       where the logo has shrunk past it.
+
+   Keep the 6.05vw in step with the Row's side padding in Navbar.tsx — widening
+   that padding narrows the logo column and shortens the header.
+
+   The previous spacer was a width-relative percentage (mt-[5.8%]). That tracked
+   the logo but never added the announcement bar, so the header sat on top of
+   the hero at every desktop width — and got worse as the link text grew, since
+   that made the pill taller without changing the spacer at all. */
+.header-offset {
+  margin-top: 12%;
+}
+
+@media screen and (min-width: 768px) {
+  .header-offset {
+    /* Announcement bar + whichever of logo/pill is taller.
+       4.9vw, not the logo box's full 6.05vw: vvfinallogo.png carries a band of
+       transparent padding (the mark fills only ~80% of the file's height), so
+       reserving the whole box left an obviously empty strip under the header.
+       This reserves down to where the logo visibly ends instead.
+       The consequence is that the bottom ~20px of the logo's transparent area
+       overlaps page content on wide screens. It is invisible, but it is still
+       part of the header's click target, so keep the top-left corner of a page
+       free of anything clickable. */
+    margin-top: calc(32px + max(4.9vw, 62px));
+  }
+}
+
+/* ── The header shell, both breakpoints ──────────────────────────────────────
+   At rest it is fully see-through, so the page artwork reads straight through
+   the navigation. Once scrolled past the threshold (see `scrolled` in
+   Navbar.tsx) it becomes frosted glass: a warm off-white wash at ~72% opacity
+   over a blur, so page content passing underneath stays perceptible as movement
+   and colour without ever competing with the nav.
+
+   saturate(180%) is what stops the blur looking grey — a plain blur averages
+   the colours underneath toward mud, and pushing saturation back up keeps the
+   warmth of the artwork behind it. The hairline and shadow are tinted with the
+   theme's deep orange rather than black for the same reason. */
+.vv-header {
+  background: transparent;
+  box-shadow: none;
+  transition:
+    background 0.3s ease,
+    box-shadow 0.3s ease,
+    backdrop-filter 0.3s ease,
+    -webkit-backdrop-filter 0.3s ease;
+}
+
+.vv-header.scrolled {
+  background: rgba(255, 247, 237, 0.72);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  border-bottom: 1px solid rgba(194, 65, 12, 0.12);
+  box-shadow: 0 6px 24px rgba(124, 45, 18, 0.1);
+}
+
+/* Keep the inner antd grid clear at every scroll position — the glass belongs
+   to the shell above, and a fill on a Row or Col would sit opaquely on top of
+   it. The shell itself is deliberately NOT in this list any more: it used to be,
+   which forced it transparent with !important and made the scrolled state
+   impossible. */
+.mobile-navbar-transparent > .ant-row,
+.mobile-navbar-transparent > .ant-row > .ant-col {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+
+
+.nav-item {
+  font-size: 20px;
+  /* Each label stays on one line — the pill grows instead of the text
+     breaking mid-label. */
+  white-space: nowrap;
+  flex-shrink: 0;
+  /* font-style: italic; */
+  font-weight: 500;
+  color: white;
+  /* Customize color as needed */
+  background: transparent;
+  border: none;
+  transition: color 0.1s ease;
+  /* Add a smooth transition effect */
+  cursor: pointer;
+  /* Change cursor to pointer on hover */
+  padding: 4px;
+  /* Add padding for better click area */
+  display: flex;
+  align-items: center;
+}
+
+.nav-item:hover {
+  color: #FFE0B2;
+
+}
+
+.nav-item.active {
+  color: #FFE0B2;
+  /* Keep active links visible against the orange nav background. */
+}
+
+.nav-item svg {
+  margin-left: 5px;
+}
+
+.navbar-icons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  gap: 10%;
+  position: relative;
+}
+
+
+
+.navbar-icons .MuiSvgIcon-root {
+  font-size: 24px;
+  /* Customize icon size */
+  color: black;
+  /* Customize icon color */
+}
+
+.navbar-icons .MuiSvgIcon-root:hover {
+  color: #FF7D00;
+  /* Change icon color to orange on hover */
+}
+
+.ant-dropdown-menu-item {
+  font-style: normal;
+  font-weight: 400;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.ant-dropdown-menu-item:hover {
+  background-color: #FF7D00;
+  /* Light gray background on hover */
+  color: #FF7D00;
+  /* Change text color to orange on hover */
+}
+
+/* Remove default color of link tag */
+.nav-item a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.person-icon {
+  cursor: pointer;
+  margin-left: 15%;
+}
+
+.login-card-wrapper {
+  position: absolute;
+  top: 100%;
+  /* Adjust this value based on your layout */
+  right: 0;
+  z-index: 1000;
+  /* Ensure it's above other elements */
+}
+
+.login-card {
+  width: 18rem;
+  padding: 10% !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.login-button {
+  margin-top: 10px;
+  background-color: #FF7D00 !important;
+  border: none !important;
+}
+
+.terms-text {
+  font-size: 0.75rem;
+  margin-top: 10px;
+}
+
+.ant-modal-content {
+  padding: 0 !important;
+}
+
+.consultation-div {
+  /* margin-top: 4%; */
+  padding-inline: 2%;
+  /* margin-bottom: 8%; */
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-block: 1%;
+  background: linear-gradient(45deg, #FD4380, #FF1864, #80002A, #FF296F, #7D1A3B);
+  background-size: 1000% 1000%;
+  animation: waveAnimation 4s ease infinite, glow 2s ease-in-out infinite alternate;
+  border-radius: 15px;
+  background-blend-mode: overlay;
+
+  /* We set this to transparent so the animated stroke is visible. */
+  border: 0px solid transparent;
+
+  cursor: pointer;
+  font-size: 16px;
+  /* Default font size */
+
+  /* Needed for the pseudo-element to position & clip properly */
+  position: relative;
+  overflow: hidden;
+}
+
+/* The pseudo-element that draws/animates the border. */
+
+/*
+    Mask out the center so only the “border area” is visible.
+    This prevents covering up your content.
+  */
+
+
+/* Background “wave” animation (unchanged from your original). */
+@keyframes waveAnimation {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* New border animation: 0%→50% (left→right), then 50%→100% (right→left) */
+@keyframes borderSlide {
+  0% {
+    background-position: 0% center;
+  }
+
+  50% {
+    background-position: 200% center;
+  }
+
+  100% {
+    background-position: 0% center;
+  }
+}
+
+/* Media queries for screen sizes sm and xs */
+@media (max-width: 600px) {
+  .consultation-div {
+    font-size: 12px;
+  }
+}
+
+
+.search-container {
+  position: relative;
+  display: inline-block;
+  margin-inline: 10px;
+}
+
+.search-icon-wrapper {
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 101;
+}
+
+.search-input {
+  position: absolute;
+  top: 33px;
+  right: -250px;
+  transform: translateX(-50%) scaleY(0);
+  transform-origin: top;
+  width: 30rem;
+  padding: 12px 20px 12px 45px;
+  opacity: 0;
+  border: none;
+  border-radius: 25px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.15),
+    0 4px 12px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  font-size: 15px;
+  font-weight: 400;
+  color: #2d3748;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 100;
+  outline: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.3px;
+}
+
+/* Enhanced hover and focus states */
+.search-input:hover {
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.2),
+    0 6px 16px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transform: translateX(-50%) scaleY(1) translateY(-2px);
+}
+
+.search-input:focus {
+  background: rgba(255, 255, 255, 1);
+  box-shadow:
+    0 16px 48px rgba(255, 107, 0, 0.15),
+    0 8px 20px rgba(0, 0, 0, 0.15),
+    0 0 0 3px rgba(255, 107, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  border-color: rgba(255, 107, 0, 0.3);
+}
+
+/* Placeholder styling */
+.search-input::placeholder {
+  color: #a0aec0;
+  font-weight: 300;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+
+.search-input:focus::placeholder {
+  opacity: 0.5;
+}
+
+
+
+
+
+
+
+
+.search-input:focus+.search-input-wrapper::after,
+.search-input-wrapper:hover::after {
+  background: #ff6b00;
+}
+
+/* Animation when search becomes visible */
+.search-input.visible {
+  transform: translateX(-50%) scaleY(1);
+  opacity: 1;
+}
+
+
+/* Reveal input on hover */
+.search-container:hover .search-input,
+.search-input:focus {
+  transform: translateX(-50%) scaleY(1);
+  opacity: 1;
+}
+
+
+/* Enhanced Desktop Search Suggestions CSS */
+.suggestions-dropdown {
+  position: fixed;
+  top: 115px;
+  left: 50%;
+  transform: translateX(-50%);
+  /* width: 80vw; */
+  max-width: 1200px;
+  z-index: 1000;
+
+  background: linear-gradient(145deg, #fff7ed 0%, #ffedd5 100%);
+  border: 1px solid #fed7aa;
+  border-radius: 16px;
+  box-shadow:
+    0 12px 32px rgba(251, 146, 60, 0.12),
+    0 8px 16px rgba(0, 0, 0, 0.06);
+
+  max-height: 70vh;
+  overflow-y: auto;
+  overflow-x: auto;
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  padding: 5px;
+  box-sizing: border-box;
+  animation: slideInDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-15px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+.suggestions-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.suggestions-dropdown::-webkit-scrollbar-track {
+  background: rgba(251, 146, 60, 0.1);
+  border-radius: 3px;
+}
+
+.suggestions-dropdown::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #fb923c, #f97316);
+  border-radius: 3px;
+}
+
+.suggestion-column {
+  flex: 1;
+  min-width: 290px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding: 0 4px;
+}
+
+.suggestion-column:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: linear-gradient(180deg,
+      transparent 0%,
+      rgba(251, 146, 60, 0.3) 20%,
+      rgba(249, 115, 22, 0.3) 80%,
+      transparent 100%);
+}
+
+.suggestion-column h4 {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ea580c;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding-bottom: 8px;
+}
+
+.suggestion-column h4::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 32px;
+  height: 2px;
+  background: linear-gradient(90deg, #fb923c, #f97316);
+  border-radius: 1px;
+}
+
+.column-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.puja-icon {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" fill="%23ea580c" viewBox="0 0 24 24"><path d="M12 2l2.09 6.26L20 9.27 14 12l2.09 6.74L12 16.09 7.91 18.74 10 12 4 9.27l5.91-1.01L12 2z"/></svg>');
+}
+
+.prasad-icon {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" fill="%23ea580c" viewBox="0 0 24 24"><path d="M12 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm9 7v-2l-6-1-3 1-3-1-6 1v2l6-1 3 1 3-1 6 1zm-18 10c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V11l-6-1-3 1-3-1-6 1v8z"/></svg>');
+}
+
+.product-icon {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" fill="%23ea580c" viewBox="0 0 24 24"><path d="M19 7h-3V6a4 4 0 0 0-8 0v1H5a1 1 0 0 0-1 1v11a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V8a1 1 0 0 0-1-1zM10 6a2 2 0 0 1 4 0v1h-4V6zm8 13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V9h2v1a1 1 0 0 0 2 0V9h4v1a1 1 0 0 0 2 0V9h2v10z"/></svg>');
+}
+
+.blog-icon {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" fill="%23ea580c" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>');
+}
+
+.suggestion-scroll {
+  overflow-y: auto;
+  max-height: 400px;
+  padding-right: 4px;
+}
+
+.suggestion-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.suggestion-scroll::-webkit-scrollbar-track {
+  background: rgba(251, 146, 60, 0.08);
+  border-radius: 2px;
+}
+
+.suggestion-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #fb923c, #f97316);
+  border-radius: 2px;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 7px;
+  margin: 2px 0;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(251, 146, 60, 0.08);
+}
+
+.suggestion-item:hover {
+  background: linear-gradient(135deg, rgba(255, 237, 213, 0.9), rgba(254, 215, 170, 0.7));
+  border-color: rgba(251, 146, 60, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(251, 146, 60, 0.12);
+}
+
+.suggestion-item:active {
+  transform: translateY(0);
+  transition: transform 0.1s ease;
+}
+
+.suggestion-item img {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  margin-right: 12px;
+  border-radius: 8px;
+  border: 1.5px solid rgba(251, 146, 60, 0.2);
+  transition: all 0.2s ease;
+}
+
+.suggestion-item:hover img {
+  border-color: rgba(249, 115, 22, 0.4);
+  transform: scale(1.08);
+}
+
+.suggestion-item span {
+  font-size: 12px;
+  font-weight: 500;
+  color: #9a3412;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.no-results-global {
+  width: 100%;
+  text-align: center;
+  padding: 40px 20px;
+  color: #888;
+  font-size: 16px;
+  font-style: italic;
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .suggestions-dropdown {
+    width: 90vw;
+    padding: 16px;
+  }
+
+  .suggestion-column {
+    min-width: 180px;
+    padding: 0 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .suggestions-dropdown {
+    width: 95vw;
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .suggestion-column {
+    min-width: 150px;
+    padding: 0 8px;
+  }
+
+  .suggestion-item {
+    padding: 8px 10px;
+  }
+
+  .suggestion-item img {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+
+
+/* mobile search bar  */
+
+.separator-mobile {
+  height: 1px;
+  background-color: #e5e7eb;
+  /* Tailwind's gray-200 */
+  margin: 0.4rem 0;
+  /* Add vertical spacing */
+  width: 100%;
+}
+
+
+
+.search-input-mobile {
+  position: absolute;
+  right: 0;
+  /* Aligns input to the right of container */
+  top: -6px;
+  width: 0px;
+  /* Start collapsed */
+  opacity: 0;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 999px;
+  transition: width 0.4s ease, opacity 0.3s ease;
+  font-size: 14px;
+  z-index: 100;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  outline: none;
+  /* Prevent focus border */
+}
+
+/* Expand input on hover or focus */
+.search-container:hover .search-input-mobile,
+.search-input-mobile:focus {
+  width: 160px;
+  /* Expand to left by increasing width */
+  opacity: 1;
+}
+
+
+/* Enhanced Mobile Search Suggestions CSS */
+.suggestions-dropdown-mobile {
+  position: fixed;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 95vw;
+  max-width: 500px;
+  max-height: 70vh;
+  overflow: hidden;
+  background: linear-gradient(145deg, #fff7ed 0%, #ffedd5 100%);
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  box-shadow:
+    0 8px 25px rgba(251, 146, 60, 0.15),
+    0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 9999;
+  animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+.suggestions-content {
+  overflow-y: auto;
+  max-height: 70vh;
+  padding: 8px;
+  overflow-x: hidden;
+  /* 👈 THIS prevents horizontal scroll */
+}
+
+.suggestions-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.suggestions-content::-webkit-scrollbar-track {
+  background: rgba(251, 146, 60, 0.1);
+  border-radius: 2px;
+}
+
+.suggestions-content::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #fb923c, #f97316);
+  border-radius: 2px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  padding: 4px 16px 4px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ea580c;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+}
+
+.section-header::before {
+  content: '';
+  position: absolute;
+  left: 16px;
+  bottom: 2px;
+  width: 24px;
+  height: 2px;
+  background: linear-gradient(90deg, #fb923c, #f97316);
+  border-radius: 1px;
+}
+
+.section-icon {
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.puja-icon {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" fill="%23ea580c" viewBox="0 0 24 24"><path d="M12 2l2.09 6.26L20 9.27 14 12l2.09 6.74L12 16.09 7.91 18.74 10 12 4 9.27l5.91-1.01L12 2z"/></svg>');
+}
+
+.prasad-icon {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" fill="%23ea580c" viewBox="0 0 24 24"><path d="M12 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm9 7v-2l-6-1-3 1-3-1-6 1v2l6-1 3 1 3-1 6 1zm-18 10c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V11l-6-1-3 1-3-1-6 1v8z"/></svg>');
+}
+
+.product-icon {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" fill="%23ea580c" viewBox="0 0 24 24"><path d="M19 7h-3V6a4 4 0 0 0-8 0v1H5a1 1 0 0 0-1 1v11a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V8a1 1 0 0 0-1-1zM10 6a2 2 0 0 1 4 0v1h-4V6zm8 13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V9h2v1a1 1 0 0 0 2 0V9h4v1a1 1 0 0 0 2 0V9h2v10z"/></svg>');
+}
+
+.blog-icon {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" fill="%23ea580c" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>');
+}
+
+.suggestion-item-mobile {
+  display: flex;
+  align-items: center;
+  padding: 6px 4px;
+  margin: 4px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(251, 146, 60, 0.1);
+}
+
+.suggestion-item-mobile:hover {
+  background: linear-gradient(135deg, rgba(255, 237, 213, 0.8), rgba(254, 215, 170, 0.6));
+  border-color: rgba(251, 146, 60, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(251, 146, 60, 0.15);
+}
+
+.suggestion-item-mobile:active {
+  transform: translateY(0);
+  transition: transform 0.1s ease;
+}
+
+.suggestion-item-img-mobile {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  object-fit: cover;
+  margin-right: 12px;
+  border: 1.5px solid rgba(251, 146, 60, 0.2);
+  transition: all 0.2s ease;
+}
+
+.suggestion-item-mobile:hover .suggestion-item-img-mobile {
+  border-color: rgba(249, 115, 22, 0.4);
+  transform: scale(1.05);
+}
+
+.suggestion-item-text-mobile {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: #9a3412;
+  line-height: 1.4;
+}
+
+.no-results-mobile {
+  text-align: center;
+  padding: 20px 16px;
+  color: #c2410c;
+  font-size: 13px;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.separator-mobile {
+  height: 1px;
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(251, 146, 60, 0.3) 20%,
+      rgba(249, 115, 22, 0.3) 80%,
+      transparent 100%);
+  margin: 12px 20px;
+}
+
+
+@media screen and (min-width: 768px) and (max-width: 991px) {
+  .navbar-content {
+    margin-right: 15%;
+    gap: 10px;
+    padding: 8px 16px;
+  }
+
+  .nav-item {
+    font-size: 16px;
+  }
+}
+
+/* From 1350px up (see isXL in Navbar.tsx) the nav stops collapsing links into
+   "More" and renders all eight — Mandir, Shri Banke Bihari Ji Seva, 4 Dham
+   Yatra and 12 Jyotirlinga are added, roughly tripling the label text. Below
+   1350px only five show and the full 20px fits with room to spare.
+
+   A fixed size does not work across this range: the eight labels are a constant
+   width, while the space for them is not. The nav column is 20/24 of a Row
+   whose content box is 94% of the viewport, so the room available is 0.783vw —
+   1057px at 1350px, but 1504px at 1920px. One size either overflows the narrow
+   end or wastes the wide end. (Overflow here is not harmless: the labels are
+   nowrap and the pill is capped at its column, so they spill out past the
+   rounded edge rather than being clipped.)
+
+   So the size tracks the width instead. `1.25vw - 3px` is the inverse of the
+   space equation with ~1.5px of slack held back at every width, capped at 20px
+   so it never outgrows the rest of the header, with a 14px floor. */
+@media screen and (min-width: 1350px) {
+  .navbar-content {
+    gap: 14px;
+    padding: 8px 18px;
+  }
+
+  .nav-item {
+    font-size: clamp(14px, calc(1.25vw - 3px), 20px);
+    padding: 4px 3px;
+  }
+}
+
+/* ── Mobile drawer search ──────────────────────────────────────────────────
+   The desktop dropdown (.suggestions-dropdown) is a position:fixed, four-column
+   overlay 1000px+ wide — it cannot render inside a 90vw drawer. This is the
+   same search, laid out for the drawer: full-width pill, results stacked in a
+   scrollable panel directly under it. Names are prefixed `vv-msearch` because
+   the generic ones (.search-container, .suggestion-item) are already taken by
+   the desktop header in this same globally-imported stylesheet. */
+.vv-msearch {
+  /* 20px sides matches the login block and the "General links" rows below it,
+     so the whole drawer keeps one left edge. */
+  padding: 12px 20px 0;
+  background: #f8f9fa;
+}
+
+.vv-msearch-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 12px;
+  background: #fff;
+  border: 1px solid #eadfd3;
+  border-radius: 12px;
+}
+
+.vv-msearch-bar-icon {
+  color: #ea580c;
+  font-size: 20px !important;
+  flex-shrink: 0;
+}
+
+.vv-msearch-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  /* 16px keeps iOS Safari from zooming the viewport on focus. */
+  font-size: 16px;
+  color: #2d3748;
+}
+
+.vv-msearch-input::placeholder {
+  color: #a0aec0;
+  font-weight: 300;
+}
+
+.vv-msearch-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #f1f1f1;
+  color: #6b7280;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.vv-msearch-results {
+  margin-top: 8px;
+  /* Scrolls on its own so long result lists never push the drawer's nav links
+     out of reach — the drawer body scrolls too, and nesting the two without a
+     cap makes the whole menu feel lost. */
+  max-height: 55vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #fff;
+  border: 1px solid #f0e6da;
+  border-radius: 12px;
+  padding: 6px 0;
+}
+
+.vv-msearch-group + .vv-msearch-group {
+  border-top: 1px solid #f5f0ea;
+}
+
+.vv-msearch-group-title {
+  margin: 0;
+  padding: 10px 14px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #ea580c;
+}
+
+.vv-msearch-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.vv-msearch-item:active {
+  background: #fff7ed;
+}
+
+.vv-msearch-item img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #f3f4f6;
+}
+
+.vv-msearch-item span {
+  font-size: 14px;
+  line-height: 1.3;
+  color: #2d3748;
+  /* Two lines, then ellipsis — puja names routinely run past a phone's width
+     and a single nowrap line cuts most of them off mid-word. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.vv-msearch-all {
+  display: block;
+  width: calc(100% - 28px);
+  margin: 8px 14px 6px;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #fb923c, #f97316);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vv-msearch-empty {
+  padding: 18px 14px;
+  text-align: center;
+  font-size: 14px;
+  color: #6b7280;
+}

@@ -1,0 +1,41 @@
+.terms-container {
+    padding-inline: 6%;
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+  }
+
+  .terms-header {
+    font-size: 28px;
+    font-weight: bold;
+    color: #FF6505;
+  }
+
+  .terms-container h2 {
+    font-size: 22px;
+    color: black;
+    margin-top: 20px;
+  }
+
+  .terms-container ul {
+    margin-left: 20px;
+    list-style-type: disc;
+  }
+
+  .terms-container li {
+    font-size: 14px;
+  }
+
+  .terms-container a {
+    color: #FF6505;
+    text-decoration: none;
+  }
+
+  .terms-container a:hover {
+    text-decoration: underline;
+  }
+
+  .terms-container p {
+    font-size: 14px;
+    color: black;
+    margin-bottom: 16px;
+  }

@@ -1,0 +1,146 @@
+/* ── BankeBihariji Seva Page – Scoped CSS ────────────────────────────── */
+/* Import only when this page is loaded (via HeroSection / Navbar imports) */
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Lato:wght@300;400;500;700&family=Rye&display=swap');
+
+.font-rye { font-family: 'Rye', serif; }
+
+/* ── CSS tokens (scoped to :root – seva- prefix avoids collisions) ───── */
+:root {
+  /* Peacock Feather Palette — teal, purple, navy, blue, cyan */
+  --seva-deep: 210 70% 12%;
+  --seva-navy: 210 70% 12%;
+  --seva-teal: 180 35% 45%;
+  --seva-emerald: 275 40% 38%;
+  --seva-dark-teal: 200 65% 35%;
+  --seva-mauve: 210 15% 42%;
+  --seva-gold: 185 80% 48%;
+  --seva-gold-light: 185 50% 82%;
+  --seva-cream: 200 20% 96%;
+  --seva-mist: 200 25% 94%;
+  --seva-purple: 275 45% 40%;
+  --seva-cyan: 185 80% 55%;
+  --seva-blue: 200 65% 35%;
+
+  /* Override base shadcn tokens while on this page */
+  --background: 200 20% 96%;
+  --foreground: 210 60% 10%;
+  --card: 200 15% 97%;
+  --card-foreground: 210 60% 10%;
+  --popover: 200 20% 96%;
+  --popover-foreground: 210 60% 10%;
+  --primary: 275 40% 38%;
+  --primary-foreground: 200 20% 96%;
+  --secondary: 195 25% 92%;
+  --secondary-foreground: 210 60% 14%;
+  --muted: 200 15% 93%;
+  --muted-foreground: 210 15% 42%;
+  --accent: 185 80% 48%;
+  --accent-foreground: 210 60% 10%;
+  --border: 200 18% 88%;
+  --input: 200 15% 90%;
+  --ring: 275 40% 38%;
+  --radius: 0.75rem;
+}
+
+/* ── Font helpers ─────────────────────────────────────────────────────── */
+.font-heading,
+.font-cormorant {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+.font-hind {
+  font-family: 'Lato', 'Poppins', sans-serif;
+}
+
+/* ── Background utilities ─────────────────────────────────────────────── */
+.bg-seva-cream  { background-color: hsl(var(--seva-cream)); }
+.bg-seva-mist   { background-color: hsl(var(--seva-mist)); }
+.bg-seva-deep   { background-color: hsl(var(--seva-deep)); }
+.bg-seva-navy   { background-color: hsl(var(--seva-navy)); }
+.bg-seva-ivory-bg { background-color: hsl(200 20% 97%); }
+
+/* ── Text colour utilities ────────────────────────────────────────────── */
+.text-seva-gold    { color: hsl(var(--seva-gold)); }
+.text-seva-deep    { color: hsl(var(--seva-deep)); }
+.text-seva-navy    { color: hsl(var(--seva-navy)); }
+.text-seva-teal    { color: hsl(var(--seva-teal)); }
+.text-seva-emerald { color: hsl(var(--seva-emerald)); }
+.text-seva-mauve   { color: hsl(var(--seva-mauve)); }
+.text-seva-purple  { color: hsl(var(--seva-purple)); }
+.text-seva-cyan    { color: hsl(var(--seva-cyan)); }
+
+/* ── Border utilities ─────────────────────────────────────────────────── */
+.border-seva-gold   { border-color: hsl(var(--seva-gold-light)); }
+.border-seva-teal   { border-color: hsl(var(--seva-teal) / 0.25); }
+.border-seva-purple { border-color: hsl(var(--seva-purple) / 0.3); }
+
+/* ── Gradient utilities ───────────────────────────────────────────────── */
+.gradient-cta {
+  background: linear-gradient(135deg, hsl(275 40% 38%), hsl(185 80% 48%));
+  color: #ffffff;
+}
+.gradient-cta-hover {
+  background: linear-gradient(135deg, hsl(275 45% 32%), hsl(185 85% 42%));
+}
+.gradient-peacock {
+  background: linear-gradient(135deg, hsl(210 70% 12%), hsl(275 40% 38%), hsl(185 80% 48%));
+}
+.gradient-peacock-soft {
+  background: linear-gradient(180deg, hsl(200 25% 94%), hsl(200 20% 92%));
+}
+
+/* ── Shadow utilities ─────────────────────────────────────────────────── */
+.shadow-seva {
+  box-shadow: 0 4px 24px -4px hsl(275 40% 38% / 0.12),
+              0 2px 8px -2px hsl(185 80% 48% / 0.08);
+}
+.shadow-seva-glow {
+  box-shadow: 0 0 30px hsl(275 40% 38% / 0.18),
+              0 0 60px hsl(185 80% 48% / 0.08);
+}
+
+/* ── Glow utilities ───────────────────────────────────────────────────── */
+.glow-aura {
+  box-shadow: 0 0 60px 20px hsl(275 40% 38% / 0.25),
+              0 0 120px 40px hsl(185 80% 48% / 0.12);
+}
+.glow-peacock {
+  box-shadow: 0 0 80px 30px hsl(275 40% 38% / 0.2),
+              0 0 140px 50px hsl(210 70% 12% / 0.15);
+}
+
+/* ── Keyframe animations ──────────────────────────────────────────────── */
+@keyframes float-petal {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.6; }
+  50%       { transform: translateY(-20px) rotate(15deg); opacity: 1; }
+}
+@keyframes gentle-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.7; }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+.animate-float-petal   { animation: float-petal 6s ease-in-out infinite; }
+.animate-gentle-pulse  { animation: gentle-pulse 4s ease-in-out infinite; }
+.animate-shimmer {
+  background-size: 200% auto;
+  animation: shimmer 3s linear infinite;
+}
+
+/* ── Hero Background ─────────────────────────────────────────────────── */
+.hero-bg {
+  background-image: url('https://vedic-vaibhav.blr1.cdn.digitaloceanspaces.com/shribankebihariji/shri-banke-bihari%20ji-optimized.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+@media (max-width: 640px) {
+  .hero-bg {
+    background-image: url('https://vedic-vaibhav.blr1.cdn.digitaloceanspaces.com/shribankebihariji/mobilebg-optimized.webp');
+    display: none; /* Hide background div on mobile as we use img tag */
+  }
+}

@@ -1,0 +1,9 @@
+.attractive-toast-popup {
+    border-radius: 12px !important; /* Rounded corners */
+    padding: 20px 40px !important; /* Larger padding */
+    font-family: 'Poppins', sans-serif !important; /* Custom font */
+    font-size: 18px !important; /* Larger font size */
+    color: #ffffff !important; /* White text */
+    box-shadow: 0px 0px 20px rgba(0,0,0,0.3) !important; /* Custom shadow */
+  }
+  

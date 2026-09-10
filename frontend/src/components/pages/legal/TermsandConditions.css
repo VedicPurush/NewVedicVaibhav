@@ -1,0 +1,42 @@
+.terms-container {
+    padding-inline: 9%;
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+  }
+  
+  .terms-header {
+    font-size: 28px;
+    font-weight: bold;
+    color: #FF6505;
+  }
+  
+  h2 {
+    font-size: 22px;
+    color: black;
+    margin-top: 20px;
+  }
+  
+  ul {
+    margin-left: 20px;
+    list-style-type: disc;
+  }
+
+  li {
+    font-size: 14px;
+  }
+  
+  a {
+    color: #FF6505;
+    text-decoration: none;
+  }
+  
+  a:hover {
+    text-decoration: underline;
+  }
+  
+  p {
+    font-size: 14px;
+    color: black;
+    margin-bottom: 16px;
+  }
+  

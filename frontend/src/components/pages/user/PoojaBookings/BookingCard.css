@@ -1,0 +1,233 @@
+.booking-card {
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0px 0px 4px 0px rgba(0,0,0,0.25);
+  background-color: white;
+  width: 100%;
+  border-radius: 12px;
+  padding: 16px;
+  transition: box-shadow 0.3s ease;
+}
+
+.booking-card:hover {
+  box-shadow: 0px 0px 8px 0px rgba(0,0,0,0.35);
+}
+
+.booking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.booking-info {
+  display: flex;
+  align-items: center;
+  width: 80%;
+}
+
+.booking-text {
+  display: flex;
+  flex-direction: column;
+  padding-left: 8px;
+}
+
+.status {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.completed {
+  color: #1AA11F;
+}
+
+.in-process {
+  color: #FFA500;
+}
+
+.schedule-info {
+  font-size: 12px;
+  color: #555;
+}
+
+.toggle-details {
+  font-size: 13px;
+  cursor: pointer;
+  color: #1890ff;
+  transition: color 0.3s ease;
+}
+
+.toggle-details:hover {
+  color: #40a9ff;
+}
+
+.booking-main {
+  background-color: #f0f2f5;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.booking-main-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pooja-image {
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  width: 100px;
+  height: 70px;
+  border-radius: 8px;
+}
+
+.pooja-details {
+  margin-left: 16px;
+}
+
+.pooja-name {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.pooja-subdetails {
+  font-size: 11px;
+}
+
+.label {
+  color: rgba(0,0,0,0.6);
+}
+
+.value {
+  color: #FF6505;
+}
+
+.pooja-price {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Timeline container styling */
+.timeline-container {
+  width: 100%;
+  margin-top: 4%;
+}
+
+/* Bar container for the timeline */
+.timeline-bar-container {
+  display: flex;
+  align-items: center;
+  height: 15px;
+  width: 100%;
+}
+
+/* The circle at the start and end */
+.circle {
+  margin-left: 0px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background-color: gray; /* Default circle color */
+}
+
+/* Filled circle */
+.filled-circle {
+  background-color: #FF6505;
+}
+
+/* Unfilled circle */
+.unfilled-circle {
+  background-color: #a9a9a9; /* Gray color when unfilled */
+}
+
+/* The filled (progress) part of the timeline */
+.filled-timeline {
+  height: 10px;
+  background-color: #FF6505; /* Color for the filled portion */
+  border-radius: 5px 0 0 5px; /* Rounding for the start */
+  transition: width 0.4s ease;
+}
+
+/* The unfilled (remaining) part of the timeline */
+.unfilled-timeline {
+  flex: 1; /* Takes up remaining space */
+  background-color: #a9a9a9; /* Gray color for the unfilled part */
+  height: 10px;
+  border-radius: 0 5px 5px 0; /* Rounding for the end */
+  transition: width 0.4s ease;
+}
+
+.labels-container {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.timeline-label {
+  text-align: center;
+  font-size: 12px;
+}
+
+.label-date {
+  font-weight: 500;
+}
+
+.booking-details {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+.booking-details.expanded {
+  max-height: 1000px; /* Adjust as needed */
+  opacity: 1;
+}
+
+.details-section {
+  display: flex;
+  flex-direction: column;
+  padding-top: 10px;
+}
+
+.section-title {
+  margin-top: 16px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.divider {
+  height: 1px;
+  background-color: #ddd;
+  margin: 8px 0;
+}
+
+.participants-row, .contact-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.detail-label, .contact-label {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.detail-value, .contact-value {
+  font-size: 12px;
+  color: rgba(0,0,0,0.7);
+}
+
+.contact-row {
+  align-items: center;
+}
+
+.contact-label {
+  width: 120px;
+}
+
+.contact-value {
+  flex: 1;
+}

@@ -1,0 +1,670 @@
+/* ============================================================================
+   SANATAN YATRA — PREMIUM LIGHT ORANGE THEME
+   Warm Cream, Saffron Orange, Clean & Modern
+   ============================================================================ */
+
+/* ---------- Design Tokens ---------- */
+:root {
+  --sy-bg:            #FFFAF4;
+  --sy-bg-warm:       #FFF4EA;
+  --sy-card-bg:       #FFFFFF;
+  --sy-card-hover:    #FFF8F2;
+
+  --sy-orange:        #E07B39;
+  --sy-orange-deep:   #C4561A;
+  --sy-orange-soft:   #F4A261;
+  --sy-orange-pale:   #FFF0E5;
+
+  --sy-text-dark:     #1C0F05;
+  --sy-text-body:     #4A3728;
+  --sy-text-muted:    #9A7B6A;
+
+  --sy-border:        rgba(224, 123, 57, 0.18);
+  --sy-border-hover:  rgba(224, 123, 57, 0.40);
+  --sy-shadow:        rgba(180, 80, 20, 0.10);
+  --sy-shadow-card:   rgba(180, 80, 20, 0.07);
+
+  --sy-font-display:  'Outfit', 'Inter', sans-serif;
+  --sy-font-body:     'Inter', 'Segoe UI', sans-serif;
+
+  --sy-radius-xl:     28px;
+  --sy-radius-lg:     20px;
+  --sy-radius-md:     14px;
+  --sy-radius-sm:     8px;
+  --sy-radius-pill:   999px;
+}
+
+/* ---------- Reset ---------- */
+.sy-modern-page *,
+.sy-modern-page *::before,
+.sy-modern-page *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ---------- Page Wrapper ---------- */
+.sy-modern-page {
+  background-color: var(--sy-bg);
+  color: var(--sy-text-body);
+  font-family: var(--sy-font-body);
+  position: relative;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* ---------- Subtle Background Canvas ---------- */
+.sy-bg-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.sy-bg-glow {
+  position: absolute;
+  width: 900px;
+  height: 900px;
+  background: radial-gradient(
+    circle,
+    rgba(240, 140, 60, 0.10) 0%,
+    rgba(244, 162, 97, 0.05) 40%,
+    transparent 70%
+  );
+  border-radius: 50%;
+  top: -200px;
+  left: 50%;
+  transform: translateX(-50%);
+  filter: blur(60px);
+}
+
+.sy-mandala-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 110vw;
+  height: 110vw;
+  max-width: 1100px;
+  max-height: 1100px;
+  transform: translate(-50%, -50%);
+  opacity: 0.025;
+  background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="none" stroke="%23E07B39" stroke-width="0.5"/><circle cx="50" cy="50" r="35" fill="none" stroke="%23E07B39" stroke-width="0.5"/><circle cx="50" cy="50" r="25" fill="none" stroke="%23E07B39" stroke-width="0.5"/><path d="M50 5 L55 35 L85 50 L55 65 L50 95 L45 65 L15 50 L45 35 Z" fill="none" stroke="%23E07B39" stroke-width="0.5"/><path d="M50 15 L52 40 L75 50 L52 60 L50 85 L48 60 L25 50 L48 40 Z" fill="none" stroke="%23E07B39" stroke-width="0.5"/></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  animation: syMandalaRotate 140s linear infinite;
+}
+
+@keyframes syMandalaRotate {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* ---------- Content Wrapper ---------- */
+.sy-content-wrapper {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3rem; /* Reduced from 5rem */
+  padding-bottom: 4rem; /* Reduced from 6rem */
+}
+
+/* ---------- General Container ---------- */
+.sy-container {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+/* ---------- Gradient Text ---------- */
+.sy-text-gradient-orange {
+  background: linear-gradient(135deg, var(--sy-orange-deep), var(--sy-orange), var(--sy-orange-soft));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================================================
+   HERO SECTION
+   ============================================================================ */
+.sy-hero-section {
+  min-height: 85vh; /* Reduced from 100vh */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4rem 0 2rem; /* Reduced from 6rem 0 4rem */
+}
+
+/* Live badge - POP-UP ENHANCED */
+.sy-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 24px;
+  background: var(--sy-orange);
+  background: linear-gradient(135deg, var(--sy-orange), var(--sy-orange-deep));
+  border: none;
+  border-radius: var(--sy-radius-pill);
+  font-family: var(--sy-font-display);
+  font-size: 0.9rem; /* Bigger */
+  font-weight: 700;
+  color: #fff; /* White for pop */
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 2rem;
+  box-shadow: 0 10px 25px rgba(224, 123, 57, 0.4);
+  animation: syBadgePop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards;
+}
+
+@keyframes syBadgePop {
+  0%   { opacity: 0; transform: scale(0.6) translateY(20px); }
+  60%  { transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.sy-dot {
+  width: 9px;
+  height: 9px;
+  background: #fff; /* White dot for dark badge */
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+  animation: syDotPulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes syDotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.45; transform: scale(0.75); }
+}
+
+/* Title */
+.sy-hero-title {
+  font-family: var(--sy-font-display);
+  font-weight: 800;
+  font-size: clamp(3rem, 9vw, 5.5rem); /* Reduced max from 6.5rem */
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  color: var(--sy-text-dark);
+  margin-bottom: 1.2rem; /* Reduced from 1.5rem */
+}
+
+/* Tagline */
+.sy-hero-tagline {
+  font-size: clamp(1.1rem, 2.5vw, 1.35rem);
+  color: var(--sy-text-muted);
+  font-weight: 400;
+  line-height: 1.6;
+  max-width: 520px;
+  margin: 0 auto 1.6rem;
+}
+
+/* Launch note */
+.sy-hero-launch-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--sy-text-muted);
+  margin-bottom: 2.8rem;
+  font-weight: 500;
+}
+
+.sy-hero-launch-note span {
+  color: var(--sy-orange);
+  font-weight: 600;
+}
+
+/* Scroll CTA */
+.sy-hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--sy-orange-deep), var(--sy-orange)) !important;
+  color: #fff !important;
+  font-family: var(--sy-font-display);
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 0.85rem 2.2rem;
+  border-radius: var(--sy-radius-pill);
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 4px 20px rgba(196, 86, 26, 0.25);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sy-hero-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(196, 86, 26, 0.32);
+  color: #fff !important;
+  background: linear-gradient(135deg, var(--sy-orange-deep), var(--sy-orange)) !important;
+  text-decoration: none;
+}
+
+.sy-hero-cta svg {
+  width: 16px;
+  height: 16px;
+  opacity: 0.85;
+}
+
+/* Divider line below hero */
+.sy-hero-divider {
+  width: 48px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--sy-orange-deep), var(--sy-orange-soft));
+  border-radius: 999px;
+  margin: 3.5rem auto 0;
+  opacity: 0.5;
+}
+
+/* ============================================================================
+   FEATURE HIGHLIGHTS
+   ============================================================================ */
+.sy-section-label {
+  text-align: center;
+  font-family: var(--sy-font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--sy-orange);
+  margin-bottom: 0.8rem;
+}
+
+.sy-section-title {
+  text-align: center;
+  font-family: var(--sy-font-display);
+  font-weight: 700;
+  font-size: clamp(1.8rem, 4vw, 2.4rem); /* Reduced max */
+  color: var(--sy-text-dark);
+  margin-bottom: 2rem; /* Reduced from 3rem */
+  line-height: 1.25;
+}
+
+.sy-features-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.sy-feature-card {
+  background: var(--sy-card-bg);
+  border: 1px solid var(--sy-border);
+  border-radius: var(--sy-radius-lg);
+  padding: 2.5rem 2rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Top accent bar */
+.sy-feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--sy-orange-deep), var(--sy-orange-soft));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.sy-feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px var(--sy-shadow);
+  border-color: var(--sy-border-hover);
+  background: var(--sy-card-hover);
+}
+
+.sy-feature-card:hover::before {
+  opacity: 1;
+}
+
+.sy-feature-icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--sy-radius-md);
+  background: var(--sy-orange-pale);
+  border: 1px solid var(--sy-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin-bottom: 1.25rem;
+  transition: background 0.3s ease;
+}
+
+.sy-feature-card:hover .sy-feature-icon-wrap {
+  background: rgba(224, 123, 57, 0.15);
+}
+
+.sy-feature-title {
+  font-family: var(--sy-font-display);
+  font-size: 1.2rem;
+  font-weight: 650;
+  color: var(--sy-text-dark);
+  margin-bottom: 0.6rem;
+}
+
+.sy-feature-desc {
+  color: var(--sy-text-muted);
+  font-size: 0.97rem;
+  line-height: 1.65;
+}
+
+/* ============================================================================
+   SERVICES SECTION
+   ============================================================================ */
+.sy-services-section {
+  padding: 2rem 0;
+}
+
+.sy-section-header {
+  text-align: center;
+  margin-bottom: 2.5rem; /* Reduced from 4rem */
+}
+
+.sy-section-title {
+  font-family: var(--sy-font-display);
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 800;
+  color: var(--sy-text-dark);
+  margin-bottom: 1rem;
+}
+
+.sy-section-subtitle {
+  color: var(--sy-text-muted);
+  font-size: 1.1rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.sy-services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+}
+
+.sy-service-card {
+  background: var(--sy-card-bg);
+  padding: 3rem 2rem;
+  border-radius: var(--sy-radius-lg);
+  border: 1px solid var(--sy-border);
+  text-align: center;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.sy-service-card:hover {
+  transform: translateY(-12px);
+  box-shadow: 0 20px 40px var(--sy-shadow);
+  border-color: var(--sy-orange);
+  background: var(--sy-card-hover);
+}
+
+.sy-card-icon {
+  font-size: 2.5rem !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sy-bg-warm);
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.sy-service-card:hover .sy-card-icon {
+  transform: scale(1.1);
+  background: #fff;
+}
+
+.sy-card-title {
+  font-family: var(--sy-font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--sy-text-dark);
+}
+
+.sy-card-desc {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--sy-text-body);
+}
+
+.sy-card-btn {
+  margin-top: auto;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--sy-radius-pill);
+  border: 1.5px solid var(--sy-orange);
+  background: transparent;
+  color: var(--sy-orange);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.sy-card-btn:hover {
+  background: var(--sy-orange);
+  color: #fff;
+}
+
+/* ============================================================================
+   DESTINATIONS SECTION
+   ============================================================================ */
+.sy-destinations-section {
+  padding: 2rem 0; /* Reduced from 4rem 0 */
+}
+
+.sy-destinations-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* Forced 4 columns for desktop density */
+  gap: 1.5rem;
+}
+
+.sy-destination-card {
+  border-radius: var(--sy-radius-lg);
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  aspect-ratio: 4/5;
+}
+
+.sy-dest-image-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.sy-dest-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s ease;
+}
+
+.sy-destination-card:hover .sy-dest-image {
+  transform: scale(1.1);
+}
+
+.sy-dest-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 60%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 2rem;
+  color: #fff;
+}
+
+.sy-dest-tag {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-weight: 700;
+  opacity: 0.8;
+  margin-bottom: 0.5rem;
+  color: var(--sy-orange-soft);
+}
+
+.sy-dest-name {
+  font-family: var(--sy-font-display);
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+
+/* ============================================================================
+   WHY CHOOSE US SECTION
+   ============================================================================ */
+.sy-why-us-section {
+  padding: 2rem 0; /* Reduced from 4rem 0 */
+}
+
+.sy-features-v-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.sy-v-feature-row {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  background: var(--sy-card-bg);
+  padding: 2rem;
+  border-radius: var(--sy-radius-lg);
+  border: 1px solid var(--sy-border);
+  transition: all 0.3s ease;
+}
+
+.sy-v-feature-row:hover {
+  border-color: var(--sy-orange);
+  box-shadow: 0 10px 30px var(--sy-shadow);
+}
+
+.sy-v-feature-icon {
+  width: 60px;
+  height: 60px;
+  background: var(--sy-orange-pale);
+  color: var(--sy-orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--sy-radius-md);
+  flex-shrink: 0;
+}
+
+.sy-v-feature-icon svg {
+  font-size: 2rem;
+}
+
+.sy-v-feature-title {
+  font-family: var(--sy-font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--sy-text-dark);
+  margin-bottom: 0.5rem;
+}
+
+.sy-v-feature-desc {
+  color: var(--sy-text-body);
+  line-height: 1.5;
+}
+
+/* ============================================================================
+   LAUNCH FOOTER
+   ============================================================================ */
+.sy-launch-footer {
+  text-align: center;
+  padding: 2.5rem 0; /* Reduced from 4rem */
+  display: flex;
+  justify-content: center;
+}
+
+.sy-status-badge-modern {
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1.5rem;
+  background: var(--sy-orange-pale);
+  border: 1px solid var(--sy-orange-soft);
+  border-radius: var(--sy-radius-pill);
+  font-family: var(--sy-font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--sy-orange);
+}
+
+.sy-status-divider {
+  width: 4px;
+  height: 4px;
+  background: var(--sy-orange);
+  border-radius: 50%;
+  opacity: 0.5;
+}
+
+/* ============================================================================
+   RESPONSIVE
+   ============================================================================ */
+@media (max-width: 768px) {
+  .sy-content-wrapper {
+    gap: 2.5rem; /* Reduced from 3.5rem */
+    padding-bottom: 3rem; /* Reduced from 4rem */
+  }
+
+  .sy-hero-section {
+    min-height: 75vh; /* Reduced from 80vh */
+    padding: 3rem 0 1.5rem; /* Reduced from 5rem 0 3rem */
+  }
+
+  .sy-v-feature-row {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.75rem; /* Reduced from 1rem */
+    padding: 1.5rem 1rem; /* Reduced */
+  }
+
+  .sy-destinations-grid {
+    grid-template-columns: repeat(2, 1fr); /* 2 columns on tablet */
+    gap: 1rem;
+  }
+
+  .sy-features-grid {
+    grid-template-columns: 1fr; /* 1 column on mobile */
+    gap: 1rem;
+  }
+
+  .sy-service-card {
+    padding: 1.75rem 1.25rem; /* Reduced from 2.5rem 1.5rem */
+  }
+}
+
+@media (max-width: 480px) {
+  .sy-container {
+    padding: 0 1rem; /* tighter container */
+  }
+
+  .sy-hero-title {
+    font-size: 2.2rem;
+  }
+
+  .sy-destinations-grid {
+    grid-template-columns: 1fr; /* Single column on small phones */
+  }
+
+  .sy-feature-card {
+    padding: 1.5rem 1.25rem;
+  }
+}

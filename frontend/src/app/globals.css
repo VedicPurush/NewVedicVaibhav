@@ -1,0 +1,343 @@
+/* NOTE: no @import for fonts here. A CSS @import is fetched only *after* this
+   stylesheet has downloaded and parsed, so it added a second serialized
+   render-blocking round trip — and it requested Poppins, which the <link> in
+   app/layout.tsx already loads in parallel. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Legacy index.css ── */
+
+.a {
+  text-decoration: none;
+}
+
+* {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 0.5em;
+  background-color: #F8F7F4;
+}
+
+::-webkit-scrollbar-track {
+  width: 0.5em;
+  background: white;
+  border-radius: 100vw;
+}
+
+::-webkit-scrollbar-thumb {
+  width: 0.5em;
+  background: #FF7722;
+  border-radius: 100vw;
+}
+
+.animated-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.animated-underline::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  transform: scaleX(0);
+  height: 2px;
+  bottom: 0;
+  left: 0;
+  background-color: currentColor;
+  transform-origin: bottom right;
+  transition: transform 0.25s ease-out;
+  color: #FF7722
+}
+
+.animated-underline:hover::after {
+  transform: scaleX(1);
+  transform-origin: bottom left;
+  color: #FF7722;
+}
+
+.link {
+  text-decoration: none;
+}
+
+a {
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+  height: 4px;
+  /* Very thin scrollbar */
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  /* Transparent background */
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #BDBDBD;
+  /* Light gray scrollbar */
+  border-radius: 10px;
+  /* Rounded corners */
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9E9E9E;
+  /* Darker gray on hover */
+}
+
+/* `.slick-center div { transform: scale(1.05) }` used to live here. As a
+   descendant selector it scaled *every* nested div, so the scale compounded
+   once per level of markup — the review card's three wrapper levels came out
+   at 1.05³ = 1.16x and overflowed its slide. centerMode is only used by the
+   review carousel, which scales the slide itself in ReviewPuja.css, so the
+   rule had no other consumer and is gone rather than scoped. */
+
+.no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Alias kept because the home widgets were written against this name. Declared
+   once here instead of being re-injected from each widget's render. */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* ── Google Translate widget suppression ──
+   This replaces a `setInterval(nukeGT, 300)` plus a MutationObserver watching
+   document.documentElement with {childList, subtree} — which re-ran a
+   17-selector querySelectorAll over the whole document on *every* DOM mutation,
+   including the thousands React makes during hydration.
+
+   CSS applies to nodes the moment they are inserted, so none of that JS was
+   buying anything the style engine does not already do for free. */
+.goog-te-banner-frame,
+.goog-te-balloon-frame,
+.goog-te-menu-frame,
+.goog-te-gadget,
+.goog-te-gadget-icon,
+.goog-te-spinner-pos,
+.goog-te-overlay,
+.goog-logo-link,
+#goog-gt-tt,
+.VIpgJd-ZVi9od-ORHb,
+.VIpgJd-ZVi9od-ORHb-OEVmcd,
+.VIpgJd-yAWNEb-VIpgJd-fmcmS,
+.VIpgJd-yAWNEb-hvhgNd,
+iframe.skiptranslate,
+iframe[name="votingFrame"],
+body > [class*="goog-te"],
+body > [class*="skiptranslate"],
+body > [class*="VIpgJd"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: fixed !important;
+  top: -9999px !important;
+  left: -9999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  max-width: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Google Translate sets `top` on <body> to make room for its banner. */
+body {
+  top: 0 !important;
+}
+
+/* ── Home login/profile reminder popup ── */
+
+@keyframes vv-slide-in-bounce {
+  0% {
+    transform: translateX(120%) scale(0.8);
+    opacity: 0;
+  }
+
+  60% {
+    transform: translateX(-10px) scale(1.05);
+    opacity: 1;
+  }
+
+  80% {
+    transform: translateX(5px) scale(0.98);
+  }
+
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-bounce {
+  animation: vv-slide-in-bounce 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes vv-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: vv-shimmer 3s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .animate-slide-in-bounce,
+  .animate-shimmer {
+    animation: none;
+  }
+}
+
+/* ── Legacy App.css ── */
+
+input,
+textarea {
+  font-family: inherit;
+}
+
+@supports (-webkit-touch-callout: none) {
+  input:focus {
+    scroll-margin-bottom: 120px;
+  }
+}
+
+/* ── Legacy styles/i18n.css — stop Google Translate rendering i18n-managed words ── */
+
+.gskip {
+  translate: no;
+}
+
+/* ── Legacy index.html inline <style> ── */
+
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+h1 {
+  font-family: "Poppins", Arial, sans-serif;
+}
+
+p {
+  font-family: "Inter", Arial, sans-serif;
+}
+
+/* ── Google Translate UI suppression ── */
+.goog-te-banner-frame,
+.goog-te-banner-frame.skiptranslate,
+.goog-te-balloon-frame,
+.goog-te-menu-frame,
+#goog-gt-tt,
+.goog-te-gadget,
+.goog-te-gadget-icon,
+.VIpgJd-ZVi9od-ORHb,
+.VIpgJd-ZVi9od-ORHb-OEVmcd,
+.VIpgJd-yAWNEb-VIpgJd-fmcmS,
+.VIpgJd-yAWNEb-hvhgNd,
+.goog-te-spinner-pos,
+.goog-te-overlay,
+.goog-logo-link,
+iframe.skiptranslate,
+iframe[name="votingFrame"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: fixed !important;
+  top: -9999px !important;
+  left: -9999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  max-width: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.goog-te-combo {
+  display: none !important;
+}
+
+body {
+  top: 0 !important;
+  position: static !important;
+}
+
+/* ── Site-wide background artwork ──────────────────────────────────────────
+   One decorative layer behind every route. Swap the two url()s below for CDN
+   paths if the artwork moves off the app bundle — nothing else needs to change. */
+
+:root {
+  --site-bg-mobile: url("/backgrounds/mobile_bg.webp");
+  --site-bg-desktop: url("/backgrounds/desktop_bg.webp");
+  /* The cream at the centre of both files: shown before the image decodes, and
+     wherever `cover` leaves a sliver on unusual aspect ratios. */
+  --site-bg-fallback: #fef8f3;
+}
+
+html {
+  background-color: var(--site-bg-fallback);
+}
+
+/* Body must stay see-through or it paints over the layer below it. */
+body {
+  background-color: transparent;
+}
+
+/* A fixed pseudo-element rather than `background-attachment: fixed`, which iOS
+   Safari re-rasterises on every scroll frame. z-index -1 puts it behind all
+   page content; body creates no stacking context, so this resolves against html. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--site-bg-fallback);
+  background-image: var(--site-bg-mobile);
+  background-repeat: no-repeat;
+  /* Top-anchored so the arch and temple spires survive the crop on tall phones. */
+  background-position: center top;
+  background-size: cover;
+}
+
+@media (min-width: 768px) {
+  body::before {
+    background-image: var(--site-bg-desktop);
+    background-position: center center;
+  }
+}
+
+@media print {
+  body::before {
+    display: none;
+  }
+}

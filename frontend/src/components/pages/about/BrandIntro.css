@@ -1,0 +1,1509 @@
+/* Prevent any horizontal scroll caused by decorative absolute elements in this page */
+.vv-section,
+.vv2-section,
+.vv3-section,
+.vv4-section,
+.vv5-section,
+.vv6-section,
+.vv7-section {
+  overflow-x: clip;
+}
+
+/* Fallback for browsers that don't support overflow: clip */
+@supports not (overflow: clip) {
+
+  .vv-section,
+  .vv2-section,
+  .vv3-section,
+  .vv4-section,
+  .vv5-section,
+  .vv6-section,
+  .vv7-section {
+    overflow-x: hidden;
+  }
+}
+
+/* =========================================================
+   DIV 1 : BRAND INTRO
+   ========================================================= */
+
+.vv-section {
+  padding: 40px 20px;
+  background: linear-gradient(135deg, #ffa220 0%, #fff7ed 60%, #ffffff 100%);
+}
+
+.vv-container {
+  max-width: 1280px;
+  margin: auto;
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 28px;
+  padding: 28px;
+  border: 2px dashed rgba(255, 140, 60, 0.45);
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.15);
+  transform-style: preserve-3d;
+}
+
+.vv-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 32px;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .vv-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* LEFT IMAGE */
+.vv-left-img {
+  width: 100%;
+  height: 420px;
+  object-fit: cover;
+  border-radius: 22px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+}
+
+/* RIGHT CONTENT */
+.vv-right {
+  text-align: center;
+}
+
+.vv-title {
+  font-size: clamp(36px, 5vw, 64px);
+  font-weight: 700;
+  color: #d45b00;
+  margin-bottom: 10px;
+}
+
+.vv-subtitle {
+  font-size: 18px;
+  color: #333;
+  margin-bottom: 32px;
+}
+
+/* TREE */
+.vv-tree-wrapper {
+  position: relative;
+  width: min(550px, 100%);
+  margin: auto;
+}
+
+@media (max-width: 600px) {
+  .vv-left-img {
+    height: 300px;
+  }
+}
+
+.vv-tree {
+  width: 100%;
+  filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.2));
+}
+
+.vv-tree-glow {
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(circle, rgba(255, 140, 60, 0.25), transparent 60%);
+  border-radius: 50%;
+  z-index: -1;
+}
+
+/* =========================================================
+   DIV 2 : MISSION / VISION
+   ========================================================= */
+
+.vv2-section {
+  padding: 40px 20px 60px;
+  background: #ffffff;
+}
+
+.vv2-wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ---------------- TABS ---------------- */
+
+.vv2-tabs {
+  position: relative;
+  width: fit-content;
+  margin: 0 auto 12px;
+  background: #ffe7cc;
+  border-radius: 9999px;
+  padding: 8px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+  display: flex;
+  gap: 8px;
+}
+
+.vv2-tab {
+  position: relative;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 14px 28px;
+  border-radius: 9999px;
+  font-weight: 700;
+  color: #c85000;
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1;
+  transition: color 160ms ease;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .vv2-tab {
+    padding: 10px 18px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 768px) {
+  .vv-section {
+    padding: 30px 15px;
+  }
+
+  .vv2-section {
+    padding: 30px 15px 40px;
+  }
+
+  .vv3-section {
+    padding: 30px 4px 10px;
+  }
+
+  .vv4-section {
+    padding: 15px 15px 40px;
+  }
+
+  .vv5-section {
+    padding: 40px 15px 50px;
+  }
+
+  .vv7-section {
+    padding: 40px 15px 50px;
+  }
+}
+
+.vv2-tab .vv2-ic {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+}
+
+.vv2-tab.isActive {
+  color: #ffffff;
+}
+
+/* Active orange pill */
+.vv2-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #ff5a00, #ff8a00);
+  box-shadow: 0 12px 24px rgba(255, 90, 0, 0.35);
+  z-index: -1;
+}
+
+/* ---------------- PANEL ---------------- */
+
+.vv2-panel {
+  position: relative;
+  border-radius: 22px;
+  background: linear-gradient(120deg,
+      #ffe5c8 0%,
+      #ffffff 55%,
+      #eef4ff 100%);
+  border: 1px solid rgba(255, 120, 40, 0.35);
+  box-shadow: 0 26px 55px rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+  transform-style: preserve-3d;
+  perspective: 1200px;
+}
+
+/* Animated border glow */
+.vv2-border {
+  position: absolute;
+  inset: -2px;
+  border-radius: 24px;
+  background: conic-gradient(from 180deg,
+      rgba(255, 120, 40, 0),
+      rgba(255, 120, 40, 0.35),
+      rgba(255, 170, 60, 0.25),
+      rgba(255, 120, 40, 0));
+  filter: blur(16px);
+  opacity: 0.22;
+  animation: vv2Spin 10s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes vv2Spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Cursor glow */
+.vv2-glow {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 520px;
+  height: 520px;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: radial-gradient(circle at 30% 30%,
+      rgba(255, 90, 0, 0.22),
+      transparent 60%);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Content */
+.vv2-content {
+  position: relative;
+  padding: 44px 44px 42px;
+}
+
+@media (max-width: 900px) {
+  .vv2-content {
+    padding: 34px 20px;
+  }
+}
+
+.vv2-body {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.78);
+  line-height: 1.8;
+  font-size: 16px;
+  max-width: 780px;
+}
+
+/* Bullets */
+.vv2-bullets {
+  margin-top: 26px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .vv2-bullets {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vv2-bullet {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.08);
+}
+
+.vv2-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: #ff5a00;
+  box-shadow: 0 0 0 6px rgba(255, 90, 0, 0.16);
+  flex: 0 0 auto;
+}
+
+/* Bottom-left image */
+.vv2-flag {
+  position: absolute;
+  left: -70px;
+  bottom: -22px;
+  width: 220px;
+  opacity: 0.95;
+  filter: drop-shadow(0 18px 22px rgba(0, 0, 0, 0.18));
+  transform: translateZ(20px);
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .vv2-flag {
+    left: -44px;
+    width: 170px;
+    bottom: -18px;
+    opacity: 0.9;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .vv2-border {
+    animation: none !important;
+  }
+}
+
+/* =========================================================
+   DIV 3 : OUR SERVICES (SCROLL POP TIMELINE)
+   ========================================================= */
+
+.vv3-section {
+  padding: 40px 20px 10px;
+  background: #fff7f0;
+}
+
+.vv3-wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.vv3-title {
+  text-align: center;
+  margin: 0 0 16px;
+  color: #d45b00;
+  font-size: clamp(28px, 3.2vw, 44px);
+  font-weight: 800;
+}
+
+/* center line */
+.vv3-timeline {
+  position: absolute;
+  left: 50%;
+  top: 78px;
+  bottom: 28px;
+  transform: translateX(-50%);
+  width: 10px;
+  pointer-events: none;
+}
+
+.vv3-line {
+  height: 100%;
+  width: 4px;
+  margin: 0 auto;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #ff5a00, #ff8a00);
+  box-shadow: 0 14px 30px rgba(255, 90, 0, 0.25);
+}
+
+.vv3-items {
+  position: relative;
+  display: grid;
+  gap: 48px;
+  padding-top: 22px;
+}
+
+.vv3-row {
+  position: relative;
+  min-height: 240px;
+  display: grid;
+  grid-template-columns: 1fr 90px 1fr;
+  align-items: start;
+}
+
+@media (max-width: 980px) {
+  .vv3-timeline {
+    left: 26px;
+    transform: none;
+    top: 70px;
+  }
+
+  .vv3-row {
+    grid-template-columns: 70px 1fr;
+  }
+}
+
+/* node */
+.vv3-node {
+  grid-column: 2;
+  justify-self: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 9999px;
+  background: #fff;
+  border: 4px solid #ff5a00;
+  box-shadow: 0 18px 30px rgba(0, 0, 0, 0.14);
+  display: grid;
+  place-items: center;
+  transform-style: preserve-3d;
+}
+
+@media (max-width: 980px) {
+  .vv3-node {
+    grid-column: 1;
+    justify-self: start;
+  }
+}
+
+.vv3-nodeLogo {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+}
+
+/* pop card */
+.vv3-pop {
+  position: relative;
+  width: min(460px, calc(100% - 40px));
+  border-radius: 18px;
+  background: #ffe9cf;
+  border: 2px solid rgba(255, 120, 40, 0.55);
+  box-shadow: 0 26px 55px rgba(0, 0, 0, 0.14);
+  padding: 22px 22px 18px;
+  transform-style: preserve-3d;
+}
+
+.vv3-row.isRight .vv3-pop {
+  grid-column: 3;
+  justify-self: start;
+}
+
+.vv3-row.isLeft .vv3-pop {
+  grid-column: 1;
+  justify-self: end;
+}
+
+@media (max-width: 980px) {
+
+  .vv3-row.isRight .vv3-pop,
+  .vv3-row.isLeft .vv3-pop {
+    grid-column: 2;
+    justify-self: start;
+    width: 100%;
+    /* Maximize width on mobile */
+  }
+}
+
+/* notch like screenshot */
+.vv3-row.isRight .vv3-pop::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 36px;
+  width: 18px;
+  height: 18px;
+  background: #ffe9cf;
+  border-left: 2px solid rgba(255, 120, 40, 0.55);
+  border-bottom: 2px solid rgba(255, 120, 40, 0.55);
+  transform: rotate(45deg);
+}
+
+.vv3-row.isLeft .vv3-pop::before {
+  content: "";
+  position: absolute;
+  right: -10px;
+  top: 36px;
+  width: 18px;
+  height: 18px;
+  background: #ffe9cf;
+  border-right: 2px solid rgba(255, 120, 40, 0.55);
+  border-top: 2px solid rgba(255, 120, 40, 0.55);
+  transform: rotate(45deg);
+}
+
+@media (max-width: 980px) {
+
+  .vv3-row.isRight .vv3-pop::before,
+  .vv3-row.isLeft .vv3-pop::before {
+    left: -10px;
+    right: auto;
+    top: 30px;
+    border-left: 2px solid rgba(255, 120, 40, 0.55);
+    border-bottom: 2px solid rgba(255, 120, 40, 0.55);
+    border-right: 0;
+    border-top: 0;
+  }
+}
+
+/* little logo chip top-left */
+.vv3-logoChip {
+  position: absolute;
+  left: 16px;
+  top: 11px;
+  width: 54px;
+  height: 54px;
+  border-radius: 12px;
+  background: #fff;
+  border: 2px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.12);
+  display: grid;
+  place-items: center;
+}
+
+.vv3-logoChip img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.vv3-itemTitle {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #B45309;
+  padding-left: 70px;
+}
+
+@media (max-width: 980px) {
+  .vv3-itemTitle {
+    padding-left: 70px;
+    margin-top: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .vv3-itemTitle {
+    font-size: 1.05rem;
+  }
+}
+
+.vv3-text {
+  margin: 0;
+  padding-left: 70px;
+  color: rgba(0, 0, 0, 0.82);
+  line-height: 1.7;
+}
+
+@media (max-width: 980px) {
+  .vv3-text {
+    padding-left: 0;
+    margin-top: 25px;
+  }
+}
+
+@media (max-width: 640px) {
+  .vv3-text {
+    font-size: 14px;
+    margin-top: 15px;
+  }
+}
+
+.vv3-bullets {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+}
+
+@media (max-width: 640px) {
+  .vv3-bullets {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 520px) {
+  .vv3-bullets {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vv3-b {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+@media (max-width: 640px) {
+  .vv3-b {
+    padding: 8px 10px;
+    font-size: 13px;
+    gap: 8px;
+  }
+}
+
+.vv3-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: #ff5a00;
+  box-shadow: 0 0 0 6px rgba(255, 90, 0, 0.16);
+  flex: 0 0 auto;
+}
+
+/* QR attached card */
+.vv3-qr {
+  margin-top: 18px;
+  position: relative;
+  width: min(340px, 100%);
+  border-radius: 16px;
+  background: #ffffff;
+  border: 2px solid rgba(255, 120, 40, 0.55);
+  box-shadow: 0 22px 45px rgba(0, 0, 0, 0.14);
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  overflow: hidden;
+  cursor: pointer;
+  transition: filter 0.2s ease;
+}
+
+.vv3-qr:hover {
+  filter: brightness(1.03);
+}
+
+.vv3-qrLink {
+  text-decoration: none;
+  display: block;
+  width: fit-content;
+}
+
+.vv3-qrConnector {
+  position: absolute;
+  top: -16px;
+  left: 55%;
+  display: flex;
+  gap: 10px;
+  transform: translateX(-50%);
+}
+
+.vv3-qrConnector span {
+  width: 6px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #ff5a00;
+  box-shadow: 0 8px 14px rgba(255, 90, 0, 0.25);
+}
+
+.vv3-qrLeft {
+  background: linear-gradient(135deg, #ff5a00, #ff8a00);
+  display: grid;
+  place-items: center;
+  padding: 14px;
+}
+
+.vv3-qrImg {
+  width: 92px;
+  height: 92px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #fff;
+  padding: 6px;
+}
+
+.vv3-qrRight {
+  padding: 14px 14px 12px;
+}
+
+@media (max-width: 480px) {
+  .vv3-qr {
+    grid-template-columns: 90px 1fr;
+    gap: 0;
+  }
+
+  .vv3-qrLeft {
+    padding: 10px;
+  }
+
+  .vv3-qrImg {
+    width: 65px;
+    height: 65px;
+  }
+
+  .vv3-qrTitle {
+    font-size: 13px;
+    gap: 4px;
+  }
+
+  .vv3-qrSub {
+    font-size: 10px;
+  }
+
+  .vv3-store {
+    width: 100px;
+    margin-top: 8px;
+  }
+}
+
+.vv3-qrTitle {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  color: #111;
+  font-size: 14px;
+}
+
+.vv3-qrTitleBold {
+  font-weight: 900;
+}
+
+.vv3-qrTitleLight {
+  font-weight: 600;
+}
+
+.vv3-qrSub {
+  margin-top: 4px;
+  color: rgba(0, 0, 0, 0.75);
+  font-size: 12px;
+}
+
+.vv3-store {
+  margin-top: 10px;
+  width: 120px;
+  height: auto;
+}
+
+/* subtle floral corner art (CSS only) */
+.vv3-qrArt {
+  position: absolute;
+  right: -26px;
+  bottom: -26px;
+  width: 120px;
+  height: 120px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 90, 0, 0.18), transparent 60%);
+  filter: blur(0.2px);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* watermark bottom-right */
+.vv3-watermark {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  font-size: 90px;
+  color: rgba(255, 90, 0, 0.22);
+  user-select: none;
+}
+
+/* =========================================================
+   DIV 4 : OUR APPS (6 IMAGES SCROLL REVEAL)
+   ========================================================= */
+
+.vv4-section {
+  padding: 20px 20px 60px;
+  background: linear-gradient(180deg, #fff7f0 0%, #ffffff 100%);
+}
+
+.vv4-wrap {
+  width: 100%;
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+.vv4-title {
+  text-align: center;
+  margin: 0 0 12px;
+  color: #d45b00;
+  font-size: clamp(28px, 3.2vw, 44px);
+  font-weight: 900;
+}
+
+.vv4-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 1300px) {
+  .vv4-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+
+@media (max-width: 900px) {
+  .vv4-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 580px) {
+  .vv4-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+
+.vv4-img {
+  width: 100%;
+  height: 420px;
+  object-fit: contain;
+  display: block;
+
+
+
+}
+
+@media (max-width: 1300px) {
+  .vv4-img {
+    height: 520px;
+  }
+}
+
+@media (max-width: 780px) {
+  .vv4-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 15px;
+  }
+
+  .vv4-img {
+    height: 380px;
+  }
+}
+
+@media (max-width: 480px) {
+  .vv4-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 25px 12px;
+  }
+
+  .vv4-img {
+    height: 340px;
+  }
+
+  .vv4-logo {
+    width: 80px !important;
+    height: 50px !important;
+  }
+}
+
+/* =========================================================
+   DIV 5 : TESTIMONIALS (3D CAROUSEL)
+   ========================================================= */
+
+.vv5-section {
+  padding: 50px 20px 60px;
+  background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 45%),
+    radial-gradient(circle at 90% 20%, rgba(255, 255, 255, 0.12), transparent 40%),
+    linear-gradient(135deg, #ff5a00 0%, #ff7a00 45%, #ff8f00 100%);
+  overflow: hidden;
+  position: relative;
+}
+
+.vv5-wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+  text-align: center;
+}
+
+.vv5-pill {
+  display: inline-flex;
+  padding: 12px 26px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #ff5a00;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  font-size: 14px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+}
+
+.vv5-title {
+  margin: 12px 0 6px;
+  color: #ffffff;
+  font-weight: 900;
+  font-size: clamp(30px, 4.2vw, 56px);
+}
+
+.vv5-sub {
+  margin: 0 auto 28px;
+  color: rgba(255, 255, 255, 0.9);
+  max-width: 720px;
+  font-size: 16px;
+}
+
+.vv5-stage {
+  position: relative;
+  margin: 0 auto;
+  padding: 18px 0 30px;
+}
+
+.vv5-sideGlow {
+  position: absolute;
+  top: 50%;
+  width: 260px;
+  height: 260px;
+  transform: translateY(-50%);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.16);
+  filter: blur(0.2px);
+  opacity: 0.9;
+}
+
+.vv5-leftGlow {
+  left: 0;
+}
+
+.vv5-rightGlow {
+  right: 0;
+}
+
+@media (max-width: 980px) {
+  .vv5-sideGlow {
+    display: none;
+  }
+}
+
+.vv5-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 64px;
+  height: 64px;
+  border-radius: 9999px;
+  border: 0;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.92);
+  color: #ff5a00;
+  font-size: 34px;
+  line-height: 64px;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.22);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.vv5-arrow:hover {
+  transform: translateY(-50%) scale(1.05);
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.26);
+}
+
+.vv5-left {
+  left: 0;
+}
+
+.vv5-right {
+  right: 0;
+}
+
+@media (max-width: 980px) {
+  .vv5-left {
+    left: -4px;
+  }
+
+  .vv5-right {
+    right: -4px;
+  }
+
+  .vv5-arrow {
+    width: 56px;
+    height: 56px;
+    line-height: 56px;
+  }
+}
+
+@media (max-width: 640px) {
+  .vv5-arrow {
+    width: 48px;
+    height: 48px;
+    line-height: 48px;
+    font-size: 26px;
+    top: auto;
+    bottom: -12px;
+    transform: none;
+  }
+
+  /* Prevent arrow jumping on mobile tap */
+  .vv5-arrow:hover {
+    transform: scale(1.05);
+    /* Only scale, no translateY */
+  }
+
+  .vv5-left {
+    left: 22%;
+  }
+
+  .vv5-right {
+    right: 22%;
+  }
+
+  /* 🔥 REMOVE VISUAL NOISE */
+  .vv5-sideGlow,
+  .vv5-rings,
+  .vv5-flagMark,
+  .vv5-omTop {
+    display: none;
+  }
+}
+
+.vv5-cardWrap {
+  position: relative;
+  width: min(920px, calc(100% - 140px));
+  margin: 0 auto;
+  height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vv5-stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* IMPORTANT: cards are stacked and framer animates x/z/rotateY */
+/* Slot is the animated layer (Framer controls transform here) */
+.vv5-slot {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transform-style: preserve-3d;
+  will-change: transform, filter, opacity;
+  isolation: isolate;
+}
+
+/* Ensure center card is always visually on top */
+.vv5-slot.isBack {
+  pointer-events: none;
+  z-index: 1;
+}
+
+.vv5-slot.isCenter {
+  pointer-events: auto;
+  z-index: 5;
+}
+
+/* Reduce any perceived overlay haze from back cards */
+.vv5-slot.isBack .vv5-card {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.vv5-slot.isCenter .vv5-card {
+  background: #ffffff;
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.28);
+}
+
+/* The card itself stays centered inside the slot (no translate centering) */
+.vv5-card {
+  width: 100%;
+  height: 100%;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+  transform-style: preserve-3d;
+}
+
+/* Make the CENTER card fully white for readability */
+.vv5-slot.isCenter .vv5-card {
+  background: #ffffff;
+}
+
+@media (max-width: 980px) {
+  .vv5-cardWrap {
+    width: min(920px, calc(100% - 120px));
+  }
+}
+
+@media (max-width: 640px) {
+  .vv5-cardWrap {
+    width: 100%;
+    padding: 0 10px;
+    height: auto;
+  }
+
+  .vv5-stack {
+    height: auto;
+    display: block;
+  }
+
+  /* 🔥 HARD FLATTEN: kill Framer transforms */
+  .vv5-slot {
+    position: relative;
+    inset: auto;
+    display: block;
+    transform: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+  }
+
+  /* 🔥 ONLY CENTER CARD */
+  .vv5-slot.isBack {
+    display: none;
+  }
+}
+
+
+.vv5-cardInner {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  height: 320px;
+}
+
+@media (max-width: 900px) {
+  .vv5-cardInner {
+    grid-template-columns: 260px 1fr;
+    height: 300px;
+  }
+}
+
+@media (max-width: 720px) {
+  .vv5-cardInner {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .vv5-cardInner {
+    min-height: unset;
+  }
+
+  .vv5-imgCol {
+    height: 220px;
+  }
+
+  .vv5-textCol {
+    padding: 20px 18px 22px;
+    text-align: center;
+  }
+
+  .vv5-text {
+    max-width: 100%;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  .vv5-name {
+    font-size: 20px;
+  }
+
+  .vv5-om {
+    display: none;
+  }
+}
+
+.vv5-imgCol {
+  position: relative;
+  background: rgba(255, 90, 0, 0.14);
+  height: 100%;
+}
+
+.vv5-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+@media (max-width: 720px) {
+  .vv5-imgCol {
+    height: 260px;
+  }
+}
+
+.vv5-textCol {
+  position: relative;
+  text-align: left;
+  padding: 28px 30px 26px;
+}
+
+.vv5-quoteMark {
+  font-size: 90px;
+  line-height: 0.8;
+  color: rgba(255, 90, 0, 0.18);
+  font-weight: 900;
+}
+
+.vv5-stars {
+  margin-top: 6px;
+  color: #ff5a00;
+  letter-spacing: 2px;
+  font-size: 18px;
+}
+
+.vv5-text {
+  margin-top: 12px;
+  color: rgba(0, 0, 0, 0.78);
+  line-height: 1.75;
+  font-size: 16px;
+  max-width: 560px;
+}
+
+.vv5-name {
+  margin-top: 20px;
+  font-weight: 900;
+  font-size: 22px;
+  color: #111;
+}
+
+.vv5-loc {
+  margin-top: 4px;
+  color: #ff5a00;
+  font-weight: 700;
+}
+
+.vv5-om {
+  position: absolute;
+  right: 26px;
+  top: 18px;
+  font-size: 56px;
+  color: rgba(255, 90, 0, 0.18);
+  user-select: none;
+}
+
+.vv5-dots {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.vv5-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  border: 0;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.55);
+  transition: width 180ms ease, background 180ms ease;
+}
+
+.vv5-dot.isActive {
+  width: 48px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+/* Background rings on right */
+.vv5-rings {
+  position: absolute;
+  right: -140px;
+  top: 40px;
+  width: 340px;
+  height: 340px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0 18%, transparent 19% 33%, rgba(255, 255, 255, 0.14) 34% 48%, transparent 49% 63%, rgba(255, 255, 255, 0.1) 64% 78%, transparent 79%);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+/* Small flag mark bottom-right */
+.vv5-flagMark {
+  position: absolute;
+  right: 22px;
+  bottom: 18px;
+  width: 78px;
+  height: 78px;
+  opacity: 0.75;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.2), transparent 62%);
+  border-radius: 18px;
+  pointer-events: none;
+}
+
+/* Om watermark top-left */
+.vv5-omTop {
+  position: absolute;
+  left: 24px;
+  top: 22px;
+  font-size: 60px;
+  color: rgba(255, 255, 255, 0.22);
+  user-select: none;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vv5-arrow:hover {
+    transform: translateY(-50%);
+  }
+}
+
+
+
+
+/* =========================================================
+   DIV 7 : WHY PEOPLE LOVE US (MASONRY GRID)
+   ========================================================= */
+
+.vv7-section {
+  padding: 50px 20px 60px;
+  background: #fff7f0;
+}
+
+.vv7-wrap {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.vv7-title {
+  text-align: center;
+  margin: 0 0 16px;
+  color: #ff5a00;
+  font-size: clamp(30px, 4.2vw, 56px);
+  font-weight: 900;
+}
+
+/* CSS masonry using columns (stable + simple) */
+.vv7-grid {
+  column-count: 4;
+  column-gap: 18px;
+}
+
+@media (max-width: 1200px) {
+  .vv7-grid {
+    column-count: 3;
+  }
+}
+
+@media (max-width: 900px) {
+  .vv7-grid {
+    column-count: 2;
+  }
+}
+
+@media (max-width: 560px) {
+  .vv7-grid {
+    column-count: 1;
+  }
+}
+
+.vv7-card {
+  break-inside: avoid;
+  display: block;
+  background: #ffe9dc;
+  border: 1.5px solid rgba(255, 90, 0, 0.45);
+  border-radius: 18px;
+  padding: 16px 16px 14px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.10);
+  margin: 0 0 18px;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  position: relative;
+}
+
+/* subtle glow like screenshot */
+.vv7-card::after {
+  content: "";
+  position: absolute;
+  inset: -40px;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 90, 0, 0.16), transparent 55%);
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.vv7-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.vv7-stars {
+  color: #ff5a00;
+  letter-spacing: 2px;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.vv7-date {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.6);
+  font-weight: 700;
+}
+
+.vv7-text {
+  margin: 10px 0 14px;
+  color: rgba(0, 0, 0, 0.82);
+  line-height: 1.65;
+  font-size: 15px;
+  font-style: italic;
+  position: relative;
+  z-index: 1;
+}
+
+.vv7-bottom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.vv7-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 9999px;
+  object-fit: cover;
+  border: 2px solid rgba(255, 90, 0, 0.55);
+}
+
+.vv7-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.vv7-name {
+  font-weight: 900;
+  color: #111;
+}
+
+.vv7-loc {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.6);
+  font-weight: 700;
+}
+
+/* Size modifiers (to mimic the screenshot variety) */
+.vv7-small {
+  min-height: 120px;
+}
+
+.vv7-medium {
+  min-height: 160px;
+}
+
+.vv7-tall {
+  min-height: 210px;
+}
+
+.vv7-wide {
+  min-height: 180px;
+}
+
+/* Make wide cards span visually by increasing padding and emphasis */
+.vv7-wide {
+  background: #ffe3d2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vv7-card {
+    transition: none !important;
+  }
+}
+
+/* Image only card style for DIV-4 */
+.vv4-imageOnly {
+  border-radius: 22px;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.16);
+  transform-style: preserve-3d;
+}
+
+.vv4-imageOnly .vv4-img {
+  width: 100%;
+  height: 520px;
+  object-fit: contain;
+  display: block;
+  background: transparent;
+}
+
+@media (max-width: 780px) {
+  .vv4-imageOnly .vv4-img {
+    height: 520px;
+  }
+}
+
+@media (max-width: 460px) {
+  .vv4-imageOnly .vv4-img {
+    height: 560px;
+  }
+}

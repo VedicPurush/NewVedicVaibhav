@@ -1,0 +1,464 @@
+.review-container {
+  width: 100%;
+  padding: 10px 0;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Glass card, warmed to the page.
+   The old fill was neutral white over a grey shadow, which sat coldly on the
+   cream background artwork. This is an off-white with the same warmth as the
+   page, a gold hairline borrowed from the #c9972c ornate rules on the puja
+   page, and a shadow tinted with the theme's deep orange instead of black. */
+.glass-card {
+  background: rgba(255, 251, 246, 0.86);
+  border: 1px solid rgba(201, 151, 44, 0.3);
+  box-shadow: 0 8px 24px rgba(124, 45, 18, 0.09);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* review card */
+.review-card {
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.review-card--desktop {
+  min-width: 300px;
+  max-width: 340px;
+}
+
+/* Fills its slide: with centerMode the slide is already only 78% of the strip,
+   so the inset comes from .carousel-item's padding rather than a width here. */
+.review-card--mobile {
+  width: 100%;
+  padding: 12px;
+}
+
+/* Opaque rather than the shared glass fill. The "Read more" button fades the
+   text out behind itself, and a translucent card would make that gradient
+   composite over its own background and show as a lighter patch. #fffbf6 is
+   the glass colour at full strength, near-indistinguishable over the cream
+   page, and it drops a per-card backdrop-filter on phones. */
+.review-card--mobile {
+  background: #fffbf6;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.review-card--mobile .review-feedback-wrap {
+  position: relative;
+  margin-top: 9px;
+}
+
+.review-card--mobile .review-feedback {
+  margin-top: 0;
+}
+
+/* Two lines rather than the desktop three. Most reviews filled all three, so
+   the card ran ~200px tall on a phone for text that "Read more" can reveal on
+   demand anyway. The matching min-height means a one-line review reserves the
+   same two lines, so every collapsed card is the same height.
+   OptimizedCarousel's shouldExpand threshold is tuned to this line count. */
+.review-card--mobile .review-feedback--clamp {
+  -webkit-line-clamp: 2;
+  min-height: 38px;
+}
+
+
+/* Avatar + "Verified Devotee" + name + five stars + score never fit on one
+   line inside a card this narrow. Both the badge and the star block are
+   flex: 0 0 auto with nowrap text, so instead of wrapping they overlapped each
+   other and spilled past the card. A two-column grid keeps the avatar in its
+   own column and stacks badge / name / rating down the second one. */
+.review-card--mobile .review-top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "avatar meta"
+    "rating rating";
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 5px;
+}
+
+.review-card--mobile .review-avatar {
+  grid-area: avatar;
+  align-self: start;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.review-card--mobile .review-top__meta {
+  grid-area: meta;
+  gap: 4px;
+}
+
+/* Rating moves under the name and spans the full card width, so it reads
+   left-to-right with everything else rather than being pinned to a right edge
+   that no longer exists — and has room to carry the location too. */
+.review-card--mobile .review-right {
+  grid-area: rating;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  margin-left: 0;
+  gap: 6px;
+  min-width: 0;
+}
+
+.review-card--mobile .review-name {
+  font-size: 13px;
+  line-height: 17px;
+}
+
+/* Last in the row and the only part that may be cut: the stars and score keep
+   their width, the place name ellipsises if it has to. */
+.review-card--mobile .review-location-inline {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  margin-left: 4px;
+}
+
+.review-card--mobile .review-stars--sm .review-star svg {
+  font-size: 16px !important;
+}
+
+/* top row */
+.review-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.review-top__meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-right {
+  margin-left: auto;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.review-score {
+  font-size: 11px;
+  color: #7c2d12;
+  font-weight: 700;
+}
+
+/* avatar — solid theme orange rather than the old orange-to-cream gradient,
+   which faded out on the right and left the initials half-legible. */
+.review-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #fff;
+  background: #ea580c;
+  box-shadow: 0 6px 16px rgba(194, 65, 12, 0.22);
+  flex: 0 0 auto;
+}
+
+/* ✅ name always visible */
+.review-name {
+  font-weight: 800;
+  color: #7c2d12;
+  font-size: 14px;
+  line-height: 18px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ✅ badge + location row (below name) */
+.review-subrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.review-location-inline {
+  font-size: 12px;
+  color: rgba(30, 30, 30, 0.62);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+/* ✅ Verified badge — amber/gold rather than the green it used to be. Green was
+   the one cool colour anywhere in this section and fought the warm palette; the
+   tick icon carries the "verified" meaning on its own. */
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(201, 151, 44, 0.12);
+  border: 1px solid rgba(201, 151, 44, 0.38);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #8a5a12;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.verified-badge__icon {
+  font-size: 16px !important;
+  color: #b8860b;
+}
+
+.verified-badge--compact {
+  padding: 2px 8px;
+  font-size: 10px;
+}
+
+.verified-badge--compact .verified-badge__icon {
+  font-size: 14px !important;
+}
+
+/* feedback */
+.review-feedback {
+  margin-top: 12px;
+  font-size: 13px;
+  color: rgba(67, 33, 15, 0.82);
+  line-height: 19px;
+}
+
+.review-feedback--clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
+}
+
+.review-feedback--expanded {
+  display: block;
+}
+
+/* stars */
+.review-stars {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.review-stars--sm .review-star svg {
+  font-size: 18px !important;
+}
+
+.review-star svg {
+  font-size: 20px !important;
+}
+
+.review-star--filled {
+  color: #ea580c;
+}
+
+/* A warm tint of the filled colour, not neutral grey — an empty star should
+   read as the same star unlit, not as a different element. */
+.review-star--empty {
+  color: rgba(124, 45, 18, 0.22);
+}
+
+/* read more button */
+.review-more-btn {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  /* Stated rather than left to the UA sheet: the mobile button is positioned
+     over the last line of the review, so its box has to match that line's
+     height to sit on it squarely. */
+  line-height: 19px;
+  color: #c2410c;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.review-more-btn:hover {
+  opacity: 0.85;
+}
+
+/* On mobile the button sits at the end of the clamped text instead of on a row
+   below it — that row cost every card ~26px, and on reviews too short to need a
+   button it read as an empty strip. The clamped line runs on underneath, so the
+   button carries a fade of the card colour to end the text into rather than
+   colliding with it. */
+.review-card--mobile .review-more-btn {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  margin-top: 0;
+  padding-left: 32px;
+  background: linear-gradient(to right,
+      rgba(255, 251, 246, 0),
+      rgba(255, 251, 246, 0.92) 20px,
+      #fffbf6 30px);
+}
+
+/* Expanded, the text ends wherever it ends: put the control back in the flow
+   underneath rather than pinning it to the right of a possibly short last line. */
+.review-card--mobile .review-feedback--expanded+.review-more-btn {
+  position: static;
+  margin-top: 6px;
+  padding-left: 0;
+  background: none;
+}
+
+/* desktop seamless strip */
+.reviews-strip {
+  overflow: hidden;
+  padding: 12px 0 16px;
+}
+
+.reviews-strip__track {
+  display: flex;
+  gap: 14px;
+  width: max-content;
+  will-change: transform;
+}
+
+/* ── Carousel (mobile) ───────────────────────────────────────────────────────
+   centerMode + centerPadding:9% (set in ReviewPuja.tsx) leave 9% of the
+   previous and next card showing either side of the active one. The rules below
+   are what make that read as depth rather than as three cropped cards: the
+   neighbours sit back slightly and dim, and the centre one comes forward. slick
+   puts .slick-center on the active slide, so the two states can be styled
+   directly with no JS. */
+.review-carousel {
+  padding: 8px 0 26px;
+}
+
+/* Breathing room between the active card and the slivers either side. Kept
+   tight so the gutter spends its width on showing the neighbouring cards
+   rather than on empty background. */
+.review-carousel .carousel-item {
+  padding: 0 5px;
+}
+
+/* 0.95 rather than a deeper 0.9: the side slides scale about their own centre,
+   so every 0.01 taken off pulls their inner edge away from the active card and
+   widens the visual gutter while showing *less* of the neighbour — the opposite
+   of what the peek is for. This is the shallowest scale that still reads as
+   depth. */
+.review-carousel .slick-slide {
+  transform: scale(0.95);
+  opacity: 0.5;
+  transition: transform 0.4s ease, opacity 0.4s ease;
+}
+
+.review-carousel .slick-slide.slick-center {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* The peeking cards are decoration, not destinations — keep taps and the
+   keyboard on the card actually being read. */
+.review-carousel .slick-slide:not(.slick-center) {
+  pointer-events: none;
+}
+
+.review-carousel .slick-dots {
+  bottom: 0;
+}
+
+.review-carousel .slick-dots li button {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.review-carousel .slick-dots li button:before {
+  font-size: 8px;
+  color: rgba(124, 45, 18, 0.35);
+  opacity: 1;
+}
+
+.review-carousel .slick-dots li.slick-active button:before {
+  color: #ea580c;
+}
+
+/* Users who ask for reduced motion get the layout without the scaling. */
+@media (prefers-reduced-motion: reduce) {
+  .review-carousel .slick-slide {
+    transition: none;
+  }
+}
+
+/* reels row */
+.reels-row {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 10px 0 12px;
+  cursor: grab;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 143, 42, 0.4) transparent;
+}
+
+.reels-row:active {
+  cursor: grabbing;
+}
+
+.reels-row::-webkit-scrollbar {
+  height: 5px;
+}
+
+.reels-row::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.reels-row::-webkit-scrollbar-thumb {
+  background: rgba(255, 143, 42, 0.45);
+  border-radius: 99px;
+}
+
+.reels-row__track {
+  display: flex;
+  gap: 12px;
+  width: max-content;
+}
+
+/* helper */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* layout wrappers */
+/* This is the gutter for the three OTHER pages that render <ReviewPuja/> bare
+   (both chadhava detail pages and the puja Detailing page). Leave it in pixels —
+   the homepage subtracts these values in its own wrapper so the section lines up
+   with its strips; see the note in HomePage.tsx. */
+.desktop-review-wrapper {
+  padding: 0 10px;
+}
+
+.mobile-review-wrapper {
+  padding: 0 12px;
+}

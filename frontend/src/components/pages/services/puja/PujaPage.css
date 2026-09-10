@@ -1,0 +1,232 @@
+.tab-container {
+  display: inline-flex;
+  background-color: #F8F7F4;
+  align-items: center;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 7px;
+  position: relative;
+  z-index: 4; 
+}
+
+
+.tab-item {
+  position: relative;
+  font-size: 16px;
+  flex: 1 1 auto;
+  width: 150px;
+  text-align: center;
+  cursor: pointer;
+  color: black;
+  font-family: Arial, sans-serif;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 15px; /* Add padding for spacing */
+}
+
+.tab-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  height: 50%;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+
+
+
+.tab-icon {
+  font-size: 24px;
+  margin-bottom: 5px;
+  color: black;
+  position: absolute;
+  top: -35px; /* Position the icon above the tab item */
+  left: 50%;
+  transform: translateX(-50%);
+  display: none; /* Icon is hidden by default */
+  
+}
+
+
+.tab-item:hover .tab-icon,
+.tab-item.active .tab-icon {
+  display: block; /* Icon is visible on hover or for the active tab */
+  margin-bottom: 20px;
+}
+
+.tab-label {
+  margin-top: 5px;
+}
+
+.tab-item:hover,
+.tab-item.active {
+  color: black;
+  background: linear-gradient(to bottom, rgba(255, 240, 192, 0.79), rgba(255, 144, 74, 0.59));
+}
+
+.tab-item.animate-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.tab-item.animate-underline::before {
+  content: '';
+  position: absolute;
+  width: 0; /* Starts at 0 */
+  height: 3px; /* Height of the animated border */
+  top: 0; /* Position the border at the top */
+  left: 0;
+  background-color: #FF7722; /* Color of the border */
+  transition: width 0.25s ease-out;  
+}
+
+.tab-item.animate-underline.first::before {
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+
+.tab-item.animate-underline.last::before {
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.tab-item:hover.animate-underline::before,
+.tab-item.active.animate-underline::before {
+  width: 100%; /* Grows the border to full width */
+}
+
+.tab-item.active .tab-icon {
+  display: block; /* Show the icon for the active tab */
+}
+
+
+
+
+.tab-container-mobile {
+  display: flex;
+  background-color: #F8F7F4;
+  align-items: center;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 0px;
+  position: relative;
+  z-index: 4;
+  overflow-x: auto; /* Enable horizontal scrolling */
+  -ms-overflow-style: none; /* Hide scrollbar for IE/Edge */
+  scrollbar-width: none; /* Hide scrollbar for Firefox */
+}
+
+.tab-container-mobile::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-item-mobile {
+  position: relative;
+  flex: 1 1 auto;
+  text-align: center;
+  cursor: pointer;
+  color: black;
+  font-family: Arial, sans-serif;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px; /* Adjust padding for smaller screens */
+}
+
+.tab-item-mobile:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  height: 50%;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.tab-icon-mobile {
+  font-size: 20px;
+  margin-bottom: 1px;
+  color: black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+}
+
+.tab-item-mobile:hover .tab-icon-mobile,
+.tab-item-mobile.active .tab-icon-mobile {
+  color: #FF7722; /* Highlight color for active or hover state */
+}
+
+.tab-label-mobile {
+  font-size: 12px; /* Smaller font for mobile labels */
+  margin-top: 5px;
+}
+
+.tab-item-mobile:hover,
+.tab-item-mobile.active {
+  color: black;
+  background: linear-gradient(to bottom, rgba(255, 240, 192, 0.79), rgba(255, 144, 74, 0.59));
+}
+
+.tab-item-mobile.animate-underline-mobile {
+  position: relative;
+  display: inline-block;
+}
+
+.tab-item-mobile.animate-underline-mobile::before {
+  content: '';
+  position: absolute;
+  width: 0; /* Starts at 0 */
+  height: 3px; /* Adjust height for mobile */
+  top: 0; /* Position at the bottom */
+  left: 0;
+  background-color: #FF7722; /* Color of the underline */
+  transition: width 0.25s ease-out;
+}
+
+.tab-item-mobile.animate-underline-mobile.first::before {
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+
+.tab-item-mobile.animate-underline-mobile.last::before {
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.tab-item-mobile:hover.animate-underline-mobile::before,
+.tab-item-mobile.active.animate-underline-mobile::before {
+  width: 100%; /* Full underline on hover or active state */
+}
+
+
+
+.custom-input:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.custom-input:focus {
+  border-color: #FF6505; /* Accent color */
+  box-shadow: 0 0 0 4px rgba(255, 101, 5, 0.2);
+}
+
+/* ── New puja listing pagination (orange active page, matches list/PujaListHero.tsx) ── */
+.puja-pagination .ant-pagination-item-active {
+  background-color: #EA580C;
+  border-color: #EA580C;
+}
+
+.puja-pagination .ant-pagination-item-active a {
+  color: #fff;
+}
+
+.puja-pagination .ant-pagination-item-active:hover a {
+  color: #fff;
+}

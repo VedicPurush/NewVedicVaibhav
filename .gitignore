@@ -1,0 +1,24 @@
+# OS
+.DS_Store
+
+# dependencies
+node_modules/
+
+# build output
+.next/
+dist/
+out/
+
+# logs
+*.log
+*.tsbuildinfo
+
+# secrets. The backend's .env.development / .env.production hold real
+# credentials and are ignored in backend/.gitignore; the frontend's only hold
+# NEXT_PUBLIC_* values and stay committed.
+.env
+.env.local
+.env.*.local
+
+# Isolated output dir for profiling builds (NEXT_DIST_DIR)
+.next-perf/

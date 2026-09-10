@@ -1,0 +1,70 @@
+/* ── Card title: one line, scrolling right-to-left when it does not fit ──────
+   The <h3> clips; the track inside it holds the text and moves.
+
+   For a loop that only ever travels one way, the track carries the title twice
+   with a fixed gap after each copy, and slides exactly half its own width. At
+   the moment it reaches -50% the second copy sits precisely where the first
+   started, so restarting the animation is invisible — the text appears to scroll
+   forever in one direction with no rewind and no jump.
+
+   The gap is set from --marquee-gap (written inline from ChadhavaComponent.tsx)
+   so the measuring code and this file cannot disagree about its width. */
+.chadhava-title {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.chadhava-title__track {
+  display: inline-flex;
+  white-space: nowrap;
+}
+
+.chadhava-title__chunk {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* Only the scrolling variant carries the trailing gap — a title that fits has
+   nothing following it to be separated from. */
+.chadhava-title__track--marquee .chadhava-title__chunk {
+  padding-right: var(--marquee-gap, 36px);
+}
+
+/* linear, not ease: a constant speed is what reads as a continuous ribbon.
+   Anything eased would visibly slow at the seam between the two copies. */
+.chadhava-title__track--marquee {
+  animation: chadhava-title-scroll var(--marquee-duration, 6s) linear infinite;
+  will-change: transform;
+}
+
+@keyframes chadhava-title-scroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Motion here is decorative — the full title is on the detail page and in the
+   element's title attribute. Anyone who has asked the OS for less motion gets a
+   static, ellipsised line instead, with the duplicate copy removed so the name
+   is not silently rendered twice. */
+@media (prefers-reduced-motion: reduce) {
+  .chadhava-title__track--marquee {
+    animation: none;
+    max-width: 100%;
+  }
+
+  .chadhava-title__chunk--dup {
+    display: none;
+  }
+
+  .chadhava-title__track--marquee .chadhava-title__chunk {
+    padding-right: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
