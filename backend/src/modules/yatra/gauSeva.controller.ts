@@ -12,7 +12,7 @@ import { env } from "../../config/env";
 import GauSevaBookingModel from "./gauSevaBooking.model";
 import PendingGauSevaBookingModel from "./pendingGauSevaBooking.model";
 import { extractClientMeta, sendOrderIdSms, toWhatsappNumber } from "./notify";
-import { pushVedicVaibhavOrderCommission } from "../../utils/partnerAffiliateCommission";
+import { normalizeOrderSource, pushVedicVaibhavOrderCommission } from "../../utils/partnerAffiliateCommission";
 import { sendWhatsappTemplateMessage } from "../../utils/whatsapp";
 import { sendGauSevaConfirmationEmail } from "../../utils/mail/smtp";
 import { sendMetaPurchaseEvent } from "../../utils/metaCapi";
@@ -50,6 +50,8 @@ export const createGauSevaRazorpayOrder = async (req: Request, res: Response): P
     specialMessage,
     vv_utm,
     referralCode,
+    // the app sends 'APP' so the app referral order cap applies; anything else is WEBSITE
+    orderSource,
     // international presentment — a REQUEST, never the amount itself
     currency,
     countryCode,
@@ -140,6 +142,7 @@ export const createGauSevaRazorpayOrder = async (req: Request, res: Response): P
     bookingStatus: "initiated",
     deliveryStatus: "pending",
     referralCode: referralCode ? String(referralCode).trim() : undefined,
+    orderSource: normalizeOrderSource(orderSource),
   });
 
   res.status(201).json({
@@ -207,6 +210,7 @@ export const finalizeGauSevaBooking = async ({
     department: "GAU_SEVA",
     productName: "GAU_SEVA",
     phone: booking.whatsapp,
+    orderSource: normalizeOrderSource(booking.orderSource),
   });
 
   // Fire background notifications

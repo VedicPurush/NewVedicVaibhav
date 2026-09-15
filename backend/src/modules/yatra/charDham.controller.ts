@@ -21,7 +21,7 @@ import {
 } from "../jyotirlinga/subscription.controller";
 import { PendingJyotirlingaBooking, RazorpayWebhookEvent } from "../jyotirlinga/subscription.model";
 import { extractClientMeta, sendOrderIdSms, toWhatsappNumber } from "./notify";
-import { pushVedicVaibhavOrderCommission } from "../../utils/partnerAffiliateCommission";
+import { normalizeOrderSource, pushVedicVaibhavOrderCommission } from "../../utils/partnerAffiliateCommission";
 import { sendWhatsappTemplateMessage } from "../../utils/whatsapp";
 import { fourDhamBookingToAdmin, fourDhamBookingToUser } from "../../utils/mail/smtpUs";
 import { sendMetaPurchaseEvent } from "../../utils/metaCapi";
@@ -164,6 +164,8 @@ export const create4DhamRazorpayOrder = async (req: Request, res: Response): Pro
     discountedAmount,
     vv_utm,
     referralCode,
+    // the app sends 'APP' so the app referral order cap applies; anything else is WEBSITE
+    orderSource,
     // international presentment — a REQUEST, never the amount itself
     currency,
     countryCode,
@@ -265,6 +267,7 @@ export const create4DhamRazorpayOrder = async (req: Request, res: Response): Pro
   const booking = await FourDhamYatraBookingModel.create({
     bookingId,
     referralCode: referralCode ? String(referralCode).trim() : undefined,
+    orderSource: normalizeOrderSource(orderSource),
     poojaDocumentId: String(pooja._id),
     poojaId: pooja.poojaId,
     poojaName: pooja.poojaName,
@@ -357,6 +360,7 @@ export const finalize4DhamBookingRecord = async ({
     department: "DHAM_YATRA",
     productName: "DHAM_YATRA",
     phone: booking.whatsapp,
+    orderSource: normalizeOrderSource(booking.orderSource),
   });
 
   // Fire background notifications

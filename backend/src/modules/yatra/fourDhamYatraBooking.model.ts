@@ -17,6 +17,8 @@ export interface IFourDhamYatraBooking extends IInternationalFields {
   _id: Types.ObjectId;
   bookingId: string;
   referralCode?: string | null;
+  /** Which surface the order was placed from — decides app vs website referral caps. */
+  orderSource?: "APP" | "WEBSITE";
   poojaDocumentId: string;
   poojaId: string;
   poojaName: string;
@@ -63,6 +65,7 @@ const fourDhamYatraBookingSchema = new Schema<IFourDhamYatraBooking>(
     totalAmount: { type: Number },
     bookingId: { type: String, required: true, unique: true, trim: true },
     referralCode: { type: String, default: null },
+    orderSource: { type: String, enum: ["APP", "WEBSITE"], default: "WEBSITE" },
     poojaDocumentId: { type: String, required: true, trim: true },
     poojaId: { type: String, required: true, trim: true },
     poojaName: { type: String, required: true, trim: true },

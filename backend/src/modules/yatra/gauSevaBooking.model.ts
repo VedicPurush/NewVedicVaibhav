@@ -46,6 +46,8 @@ export interface IGauSevaBooking extends IInternationalFields {
   razorpaySignature?: string | null;
   paidAt?: Date | null;
   referralCode?: string | null;
+  /** Which surface the order was placed from — decides app vs website referral caps. */
+  orderSource?: "APP" | "WEBSITE";
   vv_utm?: IVvUtm;
   createdAt?: Date;
   updatedAt?: Date;
@@ -69,6 +71,7 @@ const gauSevaBookingSchema = new Schema<IGauSevaBooking>(
     ...internationalSchemaFields,
     bookingId: { type: String, required: true, unique: true, trim: true },
     referralCode: { type: String, default: null },
+    orderSource: { type: String, enum: ["APP", "WEBSITE"], default: "WEBSITE" },
     packageId: { type: String, required: true, trim: true },
     packageName: { type: String, required: true, trim: true },
     packagePrice: { type: Number, required: true, min: 0 },

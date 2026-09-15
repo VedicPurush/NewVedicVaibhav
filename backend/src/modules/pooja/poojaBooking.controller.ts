@@ -22,6 +22,7 @@ import {
   tryConsumeAppReferralOrder,
   resolveAppReferralRoute,
   recordAppReferralReward,
+  externalApiHeaders,
 } from "../../utils/partnerAffiliateReferralCap";
 
 // -------------------
@@ -106,7 +107,7 @@ const sendOrderToPartnerAffiliate = async (booking: IPoojaBooking): Promise<void
       customerId: booking.mobile,
     };
 
-    await axios.post(apiUrl, payload);
+    await axios.post(apiUrl, payload, { headers: externalApiHeaders() });
   } catch (error: any) {
     logger.error(
       { err: error.response?.data || error.message },

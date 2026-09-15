@@ -18,7 +18,7 @@ import {
   type IVvUtm,
   type JyotirlingaPaymentMode,
 } from "./subscription.model";
-import { pushVedicVaibhavOrderCommission } from "../../utils/partnerAffiliateCommission";
+import { normalizeOrderSource, pushVedicVaibhavOrderCommission } from "../../utils/partnerAffiliateCommission";
 import { jyotirlingaBookingToAdmin, jyotirlingaBookingToUser } from "../../utils/mail/smtpUs";
 import { sendWhatsappTemplateMessage } from "../../utils/whatsapp";
 import { sendMetaPurchaseEvent } from "../../utils/metaCapi";
@@ -84,6 +84,7 @@ interface SubscriptionBookingDetails {
   pricingSnapshot: IPricingSnapshot & { autopayMonthly?: number };
   bookingDate?: Date;
   referralCode?: string;
+  orderSource?: "APP" | "WEBSITE";
   userID?: string;
   vv_utm?: IVvUtm;
 }
@@ -472,6 +473,7 @@ export const createConfirmedUpfrontBookingFromPending = async ({
     planId: details.planId,
     planName: details.planName,
     referralCode: details.referralCode,
+    orderSource: normalizeOrderSource(details.orderSource),
     paymentMode: "upfront",
     jyotirlingaIds: details.jyotirlingaIds,
     selectedJyotirlingaCount: details.selectedJyotirlingaCount,
@@ -506,6 +508,7 @@ export const createConfirmedUpfrontBookingFromPending = async ({
     department: "JYOTIRLINGA_SUBSCRIPTION",
     productName: "JYOTIRLINGA_SUBSCRIPTION",
     phone: booking.mobile,
+    orderSource: normalizeOrderSource(booking.orderSource),
   });
 
   await PendingJyotirlingaBooking.deleteOne({ _id: pending._id });
@@ -563,6 +566,7 @@ export const createConfirmedAutopayBookingFromPending = async ({
     planId: details.planId,
     planName: details.planName,
     referralCode: details.referralCode,
+    orderSource: normalizeOrderSource(details.orderSource),
     paymentMode: "autopay",
     jyotirlingaIds: details.jyotirlingaIds,
     selectedJyotirlingaCount: details.selectedJyotirlingaCount,
@@ -615,6 +619,7 @@ export const createConfirmedAutopayBookingFromPending = async ({
     department: "JYOTIRLINGA_SUBSCRIPTION",
     productName: "JYOTIRLINGA_SUBSCRIPTION",
     phone: booking.mobile,
+    orderSource: normalizeOrderSource(booking.orderSource),
   });
 
   await PendingJyotirlingaBooking.deleteOne({ _id: pending._id });
@@ -861,6 +866,8 @@ export const initiateJyotirlingaPayment = async (req: Request, res: Response): P
       pricingSnapshot,
       bookingDate: new Date(),
       referralCode: req.body?.referralCode ? String(req.body.referralCode).trim() : undefined,
+      // the app sends 'APP' so the app referral order cap applies; anything else is WEBSITE
+      orderSource: normalizeOrderSource(req.body?.orderSource),
       ...(vv_utm ? { vv_utm } : {}),
     };
 

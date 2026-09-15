@@ -1,5 +1,4 @@
 import type { Request, Response } from "express";
-import axios from "axios";
 import { Types } from "mongoose";
 import { Parser } from "@json2csv/plainjs";
 import NewChadhavaData from "./newChadhavaData.model";
@@ -22,6 +21,7 @@ import { sendChadhavaConfirmationToUser, type ChadhavaUserEmailBooking } from ".
 import { sendChadhavaConfirmationToAdmin, type ChadhavaAdminEmailBooking } from "../../utils/mail/smtpUs";
 import { sendMetaPurchaseEvent } from "../../utils/metaCapi";
 import { sendWhatsappTemplateMessage } from "../../utils/whatsapp";
+import { pushVedicVaibhavOrderCommission } from "../../utils/partnerAffiliateCommission";
 import {
   generateOrderID,
   getClientIp,
@@ -99,51 +99,6 @@ const toChadhavaAdminEmailBooking = (booking: IChadhavaBooking): ChadhavaAdminEm
   name: booking.name,
   whatsapp: booking.whatsapp,
 });
-
-/* -------------------------------------------------------------------------- */
-/*  Partner affiliate (new Chadhava flow)                                     */
-/* -------------------------------------------------------------------------- */
-const sendChadhavaOrderToPartnerAffiliate = async (booking: IChadhavaBooking): Promise<void> => {
-  // Only proceed if a referral code exists on the booking object.
-  if (!booking.referralCode) return;
-
-  try {
-    const apiUrl = env.partnerAffiliate.orderApi;
-    if (!apiUrl) {
-      logger.warn("PARTNER_AFFILIATE_ORDER_API is not set. Skipping affiliate call.");
-      return;
-    }
-
-    // A SINGLE consolidated product entry for the affiliate system.
-    const productsArray = [
-      {
-        productName: "CHADHAVA",
-        productPrice: booking.totalPrice,
-        commissionPercent: [0, 0, 0],
-      },
-    ];
-
-    const payload = {
-      // 'userId' is the referrer (the affiliate).
-      userId: booking.referralCode,
-      // 'refferal_user_id' is the new customer who made the booking.
-      refferal_user_id: booking.userID,
-      orderId: booking.orderID,
-      orderPrice: booking.totalPrice,
-      time: (booking.bookingDate || new Date()).toISOString(),
-      department: "CHADHAVA",
-      products: productsArray,
-    };
-
-    await axios.post(apiUrl, payload, { timeout: 10000 });
-  } catch (error: any) {
-    // Log but do not throw — non-blocking background task.
-    logger.error(
-      { err: error.response?.data || error.message },
-      `Failed to send Chadhava order to Partner Affiliate API for order ${booking.orderID}`,
-    );
-  }
-};
 
 /* -------------------------------------------------------------------------- */
 /*  Canonical booking-details builder                                         */
@@ -368,11 +323,18 @@ export const finalizeChadhavaFromPendingRazorpay = async (
 
   // 4) Side effects (NON-BLOCKING)
   void (async () => {
-    try {
-      await sendChadhavaOrderToPartnerAffiliate(confirmedBooking);
-    } catch (e: any) {
-      logger.error({ err: e?.message || e }, "Affiliate call failed");
-    }
+    // Partner-affiliate commission. customerId (whatsapp) enables the website first-order cap;
+    // APP orders get the app order cap + peer-reward routing. Never throws.
+    await pushVedicVaibhavOrderCommission({
+      referralCode: confirmedBooking.referralCode,
+      refferalUserId: confirmedBooking.userID,
+      orderId: confirmedBooking.orderID,
+      orderPrice: Number(confirmedBooking.totalPrice) || 0,
+      department: "CHADHAVA",
+      productName: "CHADHAVA",
+      phone: confirmedBooking.whatsapp,
+      orderSource: metaCtx.actionSource === "app" ? "APP" : "WEBSITE",
+    });
 
     try {
       await sendChadhavaConfirmationToUser({

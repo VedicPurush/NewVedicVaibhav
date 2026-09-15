@@ -13,7 +13,7 @@ import { env } from "../../config/env";
 import { BBSevaBooking, PendingBBSevaBooking, type IBBSevaBooking } from "./bbSevaBooking.model";
 import BBPackage from "./bbPackage.model";
 import { extractClientMeta, sendOrderIdSms } from "./notify";
-import { pushVedicVaibhavOrderCommission } from "../../utils/partnerAffiliateCommission";
+import { normalizeOrderSource, pushVedicVaibhavOrderCommission } from "../../utils/partnerAffiliateCommission";
 import { sendWhatsappTemplateMessage } from "../../utils/whatsapp";
 import { bbSevaBookingToAdmin, bbSevaBookingToUser } from "../../utils/mail/smtpUs";
 import { sendMetaPurchaseEvent } from "../../utils/metaCapi";
@@ -43,6 +43,8 @@ export const initiateBBSevaPayment = async (req: Request, res: Response): Promis
     discountedAmount,
     vv_utm,
     referralCode,
+    // the app sends 'APP' so the app referral order cap applies; anything else is WEBSITE
+    orderSource,
     // international presentment — a REQUEST, never the amount itself
     currency,
     countryCode,
@@ -131,6 +133,7 @@ export const initiateBBSevaPayment = async (req: Request, res: Response): Promis
     pincode: pincode ? String(pincode).trim() : undefined,
     ...(vv_utm ? { vv_utm } : {}),
     referralCode: referralCode ? String(referralCode).trim() : undefined,
+    orderSource: normalizeOrderSource(orderSource),
   });
 
   res.status(200).json({
@@ -185,6 +188,7 @@ export const finalizeBBSevaBooking = async ({
     department: "BANKE_BIHARI_SEVA",
     productName: "BANKE_BIHARI_SEVA",
     phone: booking.mobile,
+    orderSource: normalizeOrderSource(booking.orderSource),
   });
 
   // Background notifications

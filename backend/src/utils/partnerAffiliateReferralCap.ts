@@ -26,7 +26,8 @@ const partnerAffiliateApiBase = (): string | null => {
   return ordersApiUrl.replace(/\/orders\/?$/, "");
 };
 
-const externalApiHeaders = (): Record<string, string> => {
+/** X-API-KEY header for every partner-affiliate external API call (empty when no key is configured). */
+export const externalApiHeaders = (): Record<string, string> => {
   const headers: Record<string, string> = {};
   if (env.partnerAffiliate.externalApiKey) {
     headers["X-API-KEY"] = env.partnerAffiliate.externalApiKey;

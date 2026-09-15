@@ -33,6 +33,8 @@ export interface IBBSevaBooking extends IInternationalFields {
   state?: string;
   pincode?: string;
   referralCode?: string | null;
+  /** Which surface the order was placed from — decides app vs website referral caps. */
+  orderSource?: "APP" | "WEBSITE";
   rating?: number;
   review?: string;
   vv_utm?: IVvUtm;
@@ -80,6 +82,7 @@ const bbSevaBookingSchema = new Schema<IBBSevaBooking>(
     state: { type: String },
     pincode: { type: String },
     referralCode: { type: String, default: null },
+    orderSource: { type: String, enum: ["APP", "WEBSITE"], default: "WEBSITE" },
     rating: { type: Number },
     review: { type: String },
     vv_utm: vvUtmField,
@@ -114,6 +117,7 @@ const pendingBBSevaBookingSchema = new Schema<IBBSevaBooking>(
     state: { type: String },
     pincode: { type: String },
     referralCode: { type: String, default: null },
+    orderSource: { type: String, enum: ["APP", "WEBSITE"], default: "WEBSITE" },
     vv_utm: vvUtmField,
   },
   { timestamps: true },

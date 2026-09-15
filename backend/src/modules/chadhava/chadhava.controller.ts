@@ -18,6 +18,7 @@ import {
   tryConsumeAppReferralOrder,
   resolveAppReferralRoute,
   recordAppReferralReward,
+  externalApiHeaders,
 } from "../../utils/partnerAffiliateReferralCap";
 import {
   generateOrderID,
@@ -158,7 +159,7 @@ const sendChadhavaOrderToPartnerAffiliate = async (booking: IChadhavaBooking): P
       customerId: booking.whatsapp,
     };
 
-    await axios.post(apiUrl, payload, { timeout: 10000 });
+    await axios.post(apiUrl, payload, { timeout: 10000, headers: externalApiHeaders() });
   } catch (error: any) {
     // Log but do not throw — non-blocking background task.
     logger.error(

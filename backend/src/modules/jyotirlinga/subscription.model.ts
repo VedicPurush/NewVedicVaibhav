@@ -199,6 +199,8 @@ export interface IVvUtm {
 export interface IJyotirlingaSubscriptionBooking extends Document {
   orderID: string;
   referralCode?: string;
+  /** Which surface the order was placed from — decides app vs website referral caps. */
+  orderSource?: "APP" | "WEBSITE";
   name: string;
   mobile: string;
   email?: string;
@@ -227,6 +229,7 @@ const JyotirlingaSubscriptionBookingSchema = new Schema<IJyotirlingaSubscription
   {
     orderID: { type: String, required: true, unique: true, index: true },
     referralCode: { type: String, default: null },
+    orderSource: { type: String, enum: ["APP", "WEBSITE"], default: "WEBSITE" },
     name: { type: String, required: true },
     mobile: { type: String, required: true },
     email: { type: String, default: "" },

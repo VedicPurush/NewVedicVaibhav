@@ -1,6 +1,12 @@
 import axios from "axios";
 import { env } from "../config/env";
 import { logger } from "../lib/logger";
+import {
+  externalApiHeaders,
+  recordAppReferralReward,
+  resolveAppReferralRoute,
+  tryConsumeAppReferralOrder,
+} from "./partnerAffiliateReferralCap";
 
 /**
  * Generic partner-affiliate commission push for ALL Vedic Vaibhav booking modules.
@@ -11,10 +17,16 @@ import { logger } from "../lib/logger";
  * module: pass the booking's referral code, order id, amount, phone and a department string.
  *
  * - No-op (silent) when there's no referral code — nobody earns, order still completes.
+ * - APP orders go through the same rules as pooja/prasad/chadhava: the referred customer's
+ *   first-N-orders cap, then partner code -> commission push, plain customer code -> store credit.
  * - Reads the endpoint from env.partnerAffiliate.orderApi (normalized per-environment by
  *   config/env.ts, so it hits localhost:9001 locally / the live host in production).
  * - NEVER throws — a booking must succeed even if this background push fails.
  */
+/** Checkout-supplied order source -> 'APP' | 'WEBSITE'. Anything not explicitly 'APP' is a website order. */
+export const normalizeOrderSource = (value: unknown): "APP" | "WEBSITE" =>
+  String(value ?? "").trim().toUpperCase() === "APP" ? "APP" : "WEBSITE";
+
 export async function pushVedicVaibhavOrderCommission(params: {
   referralCode?: string | null;
   /** the customer's user id (audit only) */
@@ -39,6 +51,28 @@ export async function pushVedicVaibhavOrderCommission(params: {
     const orderPrice = Number(params.orderPrice) || 0;
     if (!(orderPrice > 0)) return;
 
+    const orderSource = params.orderSource === "APP" ? "APP" : "WEBSITE";
+    if (orderSource === "APP") {
+      const withinCap = await tryConsumeAppReferralOrder(params.phone);
+      if (!withinCap) {
+        logger.info(
+          `[PartnerAffiliate][${params.department}] Skipping commission for order ${orderId}: app referral order cap reached for this customer.`,
+        );
+        return;
+      }
+      // Exactly one path per order: plain-customer code -> store credit, partner code -> push below.
+      if ((await resolveAppReferralRoute(referralCode)) === "PEER") {
+        await recordAppReferralReward({
+          referrerCode: referralCode,
+          orderId,
+          orderAmount: orderPrice,
+          department: params.department,
+          referredPhone: params.phone ?? null,
+        });
+        return;
+      }
+    }
+
     const apiUrl = env.partnerAffiliate.orderApi;
     if (!apiUrl) {
       logger.warn(`[PartnerAffiliate][${params.department}] partner-affiliate order API not set. Skipping.`);
@@ -59,12 +93,12 @@ export async function pushVedicVaibhavOrderCommission(params: {
           commissionPercent: [0, 0, 0], // Vedic Vaibhav engine computes the split; per-product % unused
         },
       ],
-      orderSource: params.orderSource || "WEBSITE",
+      orderSource,
       customerId: params.phone || undefined, // used by the website "first order only" cap
     };
 
     const resp = await axios.post(apiUrl, payload, {
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...externalApiHeaders() },
       timeout: 15000,
       validateStatus: () => true,
     });

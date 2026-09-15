@@ -21,6 +21,7 @@ import {
   tryConsumeAppReferralOrder,
   resolveAppReferralRoute,
   recordAppReferralReward,
+  externalApiHeaders,
 } from "../../utils/partnerAffiliateReferralCap";
 
 /**
@@ -94,7 +95,7 @@ const sendPrasadOrderToPartnerAffiliate = async (booking: IPrasadBooking): Promi
       customerId: booking.address?.number,
     };
 
-    await axios.post(apiUrl, payload);
+    await axios.post(apiUrl, payload, { headers: externalApiHeaders() });
   } catch (error) {
     logger.error(
       {
