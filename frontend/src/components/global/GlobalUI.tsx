@@ -6,6 +6,7 @@ import { captureReferralCode } from "@/lib/referral";
 import AppDownloadModal from "@/components/shared/AppDownloadModal";
 import GlobalBackgroundMusic from "@/components/widgets/music/GlobalBackgroundMusic";
 import OfferPopup from "./OfferPopup";
+import NavigationProgress from "./NavigationProgress";
 
 declare global {
   interface Window {
@@ -207,6 +208,9 @@ export function GlobalUI() {
   // useSearchParams requires a Suspense boundary when rendered from the root layout.
   return (
     <Suspense fallback={null}>
+      {/* Top-of-viewport bar for the duration of every client-side navigation.
+          Lives inside this boundary because it reads useSearchParams too. */}
+      <NavigationProgress />
       <GlobalUIInner />
     </Suspense>
   );

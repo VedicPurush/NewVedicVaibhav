@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import TempleHinduIcon from "@mui/icons-material/TempleHindu";
 import NightsStayIcon from "@mui/icons-material/NightsStay";
@@ -12,10 +13,15 @@ import SelfImprovementIcon from "@mui/icons-material/SelfImprovement";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Loadinggif from "@/components/shared/LoadingGif";
-import PackageSelectSheet, { type PujaPackage } from "./PackageSelectSheet";
+import type { PujaPackage } from "./PackageSelectSheet";
 import { usePitruPujaQuery } from "@/hooks/queries/usePitruPujaQueries";
 import { PITRU_PUJA_ID } from "./constants";
-import type { PitruPujaFeatureCard } from "@/lib/api/pitruPuja.api";
+import type { PitruPuja, PitruPujaFeatureCard } from "@/lib/api/pitruPuja.api";
+
+/** The sheet is only reachable behind a tap on "Select Package", so its markup
+ *  and its three MUI icons are kept out of the initial bundle — nothing it
+ *  contains is needed to paint or interact with the page itself. */
+const PackageSelectSheet = dynamic(() => import("./PackageSelectSheet"), { ssr: false });
 
 const BADGE_ICONS = [TempleHinduIcon, NightsStayIcon];
 const BADGE_STYLES = [
@@ -61,18 +67,25 @@ const formatMandirDate = (isoDate?: string): { dateLabel: string } | null => {
   return { dateLabel: `${day}, ${weekday}` };
 };
 
-const PitruPujaPage: React.FC = () => {
+interface PitruPujaPageProps {
+  /** Fetched on the server (see lib/server/pitruPujaData.ts) so the first render
+   *  already has the banner and copy instead of a loading GIF. */
+  serverPuja?: PitruPuja | null;
+}
+
+const PitruPujaPage: React.FC<PitruPujaPageProps> = ({ serverPuja }) => {
   const [activeTab, setActiveTab] = useState<TabKey>("about");
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [selectedPackageId, setSelectedPackageId] = useState("");
   const router = useRouter();
 
-  const { data: pitruPuja, isLoading } = usePitruPujaQuery(PITRU_PUJA_ID);
+  const { data: pitruPuja, isLoading } = usePitruPujaQuery(PITRU_PUJA_ID, serverPuja);
 
-  // Matches the loading gate used across the pooja/chadhava pages: `!pitruPuja`
-  // also covers the brief window right after hydration where the query hasn't
-  // started fetching yet, which `isLoading` alone misses on a hard reload and
-  // was flashing "This puja could not be found." before the real data arrived.
+  // With `serverPuja` present this gate never fires — the data arrives with the
+  // HTML. It remains for the fallback path where the server fetch failed (or
+  // the page was prerendered at build time), which still loads client-side.
+  // `!pitruPuja` also covers the brief window right after hydration where the
+  // query hasn't started fetching yet, which `isLoading` alone misses.
   if (isLoading || !pitruPuja) return <Loadinggif />;
 
   const packages: PujaPackage[] = pitruPuja.packages.map((pkg, index) => ({
@@ -120,6 +133,8 @@ const PitruPujaPage: React.FC = () => {
               <img
                 loading="eager"
                 fetchPriority="high"
+                width={768}
+                height={320}
                 src={bannerImage}
                 alt={pitruPuja.pujaName}
                 className="w-full h-[220px] md:h-[320px] object-cover bg-[#F4E4CC]"
@@ -293,14 +308,18 @@ const PitruPujaPage: React.FC = () => {
         </div>
       )}
 
-      <PackageSelectSheet
-        isOpen={isSheetOpen}
-        packages={packages}
-        selectedId={selectedPackageId || packages[0]?.id || ""}
-        onSelect={setSelectedPackageId}
-        onClose={() => setIsSheetOpen(false)}
-        onProceed={handleProceed}
-      />
+      {/* Mounted only once opened, so the chunk is requested on the tap that
+          needs it rather than during hydration. */}
+      {isSheetOpen && (
+        <PackageSelectSheet
+          isOpen={isSheetOpen}
+          packages={packages}
+          selectedId={selectedPackageId || packages[0]?.id || ""}
+          onSelect={setSelectedPackageId}
+          onClose={() => setIsSheetOpen(false)}
+          onProceed={handleProceed}
+        />
+      )}
 
       <Footer />
     </>

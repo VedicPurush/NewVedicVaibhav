@@ -34,5 +34,7 @@ export const fetchNewChadhavaList = async (): Promise<NewChadhavaItem[]> => {
 
 export const fetchNewChadhavaById = async (id: string): Promise<any> => {
   const res = await api.get(`/newChadhava/get-new-chadhava/${id}`);
-  return res.data?.data;
+  // Same CDN-edge rewrite as the list — every banner, item and gift image on the
+  // detail page was otherwise fetched from the uncached origin bucket.
+  return withCdnUrls(res.data?.data);
 };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import Image from 'next/image';
 import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowRight from '@mui/icons-material/KeyboardArrowRight';
 
@@ -96,11 +97,14 @@ const NewChadhavaContent = ({
                             className="flex flex-col items-center rounded-2xl bg-white p-2 py-3 text-center shadow-[0_4px_12px_rgba(0,0,0,0.04)] ring-1 ring-black/5"
                         >
                             <div className="mb-2 flex h-10 w-10 items-center justify-center">
-                                <img loading="lazy"
+                                {/* Resized by next/image — the source PNGs are far larger than 40px. */}
+                                <Image
                                     src={benefit.image}
                                     alt={benefit.title}
+                                    width={40}
+                                    height={40}
                                     className="h-full w-full object-contain"
-                                 />
+                                />
                             </div>
                             <h3 className="mb-1 text-[11px] font-bold leading-tight text-gray-900">
                                 {benefit.title}

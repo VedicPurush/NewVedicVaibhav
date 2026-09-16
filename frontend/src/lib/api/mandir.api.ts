@@ -29,5 +29,8 @@ export const fetchActiveMandirs = async (): Promise<Mandir[]> => {
 export const fetchMandirById = async (id: string): Promise<Mandir | null> => {
   if (!id) return null;
   const res = await api.get(`/fetch-mandir-by-id/${id}`);
-  return res.data?.mandir ?? res.data?.data ?? null;
+  // Same CDN-edge rewrite as the active list. Without it a page that first
+  // renders a mandir image from another (already rewritten) payload and then
+  // swaps to this one downloads the same image twice under two hostnames.
+  return withCdnUrls(res.data?.mandir ?? res.data?.data ?? null);
 };

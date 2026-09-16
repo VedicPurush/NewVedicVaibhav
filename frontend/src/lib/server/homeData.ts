@@ -181,12 +181,25 @@ const projectMandirs = (list: any[] | null, poojas: any[] | null): any[] | null 
 };
 
 export const loadHomeData = async (): Promise<HomeInitialData> => {
-  // `next build` prerenders this route. A transient outage of the remote API
-  // must not make creating the deployable artifact depend on that API. At
-  // runtime, ISR (and the client queries) will populate these sections.
-  if (process.env.NEXT_PHASE === "phase-production-build") {
-    return EMPTY_HOME_DATA;
-  }
+  // NOTE: this used to bail out to EMPTY_HOME_DATA during `next build`, so that
+  // a transient API outage could not fail the build.
+  //
+  // That protection was already provided by safeFetch below — it catches per
+  // endpoint and returns null, so no outage can fail the build with or without
+  // the bail-out. What the bail-out *did* do was guarantee that the prerendered
+  // homepage contained no chadhava, puja, temple or banner at all. That shell is
+  // then served to every visitor until ISR regenerates the route, which does not
+  // happen until `revalidate` seconds have passed AND someone requests it — so
+  // for the first minutes after every deploy, real users got the empty page.
+  //
+  // Measured on a 412x823 phone, the difference between the two versions of this
+  // same page: CLS 0.956 with the empty shell (every section mounts client-side
+  // and reflows the page under the reader) versus 0.0067 once the route holds
+  // real data. Same code, same build — only the server data differs.
+  //
+  // So the fetches now run at build time too. If the API is down then, each one
+  // degrades to null exactly as it would at runtime and the build still
+  // succeeds; if it is up, the deploy ships a page that is complete on arrival.
 
   const [banners, chadhava, poojas, mandirs] = await Promise.all([
     safeFetch("banners", fetchAllBanners),

@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { withCdnUrls } from "@/lib/imageUrl";
 
 export interface PitruPujaPackage {
   personCount: number;
@@ -35,5 +36,8 @@ export interface PitruPuja {
 
 export const fetchPitruPujaByPujaId = async (pujaId: string): Promise<PitruPuja | null> => {
   const res = await api.get(`/fetch-pitru-puja/${pujaId}`);
-  return res.data?.pitruPuja ?? null;
+  // The uploader stores Spaces *origin* URLs, so the banner — this page's LCP
+  // element — was being fetched from the bucket rather than the CDN edge. See
+  // lib/imageUrl.ts for the measured difference.
+  return withCdnUrls(res.data?.pitruPuja ?? null);
 };

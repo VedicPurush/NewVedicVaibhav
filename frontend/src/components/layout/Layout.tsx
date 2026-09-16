@@ -1,8 +1,24 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Navbar from "./Navbar";
-import Footer from "./Footer";
 import LazySection from "@/components/widgets/home/LazySection";
+
+/**
+ * The footer is the last thing on every page, and LazySection already holds it
+ * back until the user scrolls within 100px of it. A *static* import defeated
+ * half of that: deferring the render does nothing about the download, so the
+ * footer's dependencies — framer-motion plus five @mui/icons-material icons,
+ * which webpack grouped into a single 124KB chunk — were still fetched, parsed
+ * and compiled in the initial payload of all 38 pages that use this Layout.
+ * That parse happens on the main thread during hydration, which is exactly what
+ * Total Blocking Time measures.
+ *
+ * Loading it dynamically makes the deferral real: the chunk is requested when
+ * LazySection mounts the component, i.e. when the footer is nearly in view.
+ * ssr is left ON so the footer's links stay in the server HTML for crawlers.
+ */
+const Footer = dynamic(() => import("./Footer"));
 
 const Layout = ({
   content,
