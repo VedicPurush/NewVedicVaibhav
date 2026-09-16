@@ -8,6 +8,21 @@ import { createOrderWithFallback, internationalFields, orderResponseFields } fro
 import { env } from "../../config/env";
 import { logger } from "../../lib/logger";
 import { ApiError } from "../../lib/apiError";
+import { resolvePromo } from "../promo/promo.service";
+
+const istDay = (date: Date) => date.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+
+/**
+ * The date being booked: the earliest puja date that is today or later (IST),
+ * else the latest one. Mirrors getNextPitruPujaDate on the frontend, which is
+ * the date the devotee saw on the page.
+ */
+function nextPujaDate(dates: Date[] = []): Date | undefined {
+  const valid = dates.map((d) => new Date(d)).filter((d) => !isNaN(d.getTime()));
+  valid.sort((a, b) => a.getTime() - b.getTime());
+  const today = istDay(new Date());
+  return valid.find((d) => istDay(d) >= today) ?? valid.at(-1);
+}
 
 function generateOrderID(): string {
   const prefix = "VVPP"; // Vedic Vaibhav Pitru Puja
@@ -23,9 +38,12 @@ function generateOrderID(): string {
  * are never taken from the client: both are resolved here from the puja's own
  * `packages[]`, keyed by the package `label` (a real catalog field), so a
  * tampered request can change which package it claims, never what it costs.
+ *
+ * An optional `promoCode` is validated here against that catalog price — the
+ * browser only names the code, it never sends the discounted amount.
  */
 export const createPitruPujaBooking = async (req: Request, res: Response): Promise<void> => {
-  const { pujaId, packageLabel, whatsappNumber, callingNumber, kartaName, kartaGotra, ancestorNames } =
+  const { pujaId, packageLabel, whatsappNumber, callingNumber, kartaName, kartaGotra, ancestorNames, promoCode } =
     req.body as Record<string, unknown>;
 
   if (!pujaId || typeof pujaId !== "string") throw ApiError.badRequest("Missing pujaId.");
@@ -53,16 +71,23 @@ export const createPitruPujaBooking = async (req: Request, res: Response): Promi
     throw ApiError.badRequest(`This package is for ${pkg.personCount} ancestor(s).`);
   }
 
+  const promo = promoCode ? await resolvePromo(promoCode, pkg.price) : null;
+  const payableInr = promo ? promo.finalAmount : pkg.price;
+
   const orderId = generateOrderID();
-  const mandirDateIso = puja.mandirDate?.[0] ? new Date(puja.mandirDate[0]).toISOString() : undefined;
+  const pujaDate = nextPujaDate(puja.mandirDate);
+  const mandirDateIso = pujaDate ? pujaDate.toISOString() : undefined;
 
   const booking = new PitruPujaBooking({
     pujaId,
     poojaName: puja.pujaName,
     packageLabel: pkg.label,
     personCount: pkg.personCount,
-    price: pkg.price,
-    listAmount: pkg.price,
+    price: payableInr,
+    listAmount: payableInr,
+    originalAmount: pkg.price,
+    promoCode: promo?.promoName,
+    discountAmount: promo?.discountAmount ?? 0,
     whatsappNumber: String(whatsappNumber).trim(),
     callingNumber: callingNumber ? String(callingNumber).trim() : undefined,
     kartaName: String(kartaName).trim(),

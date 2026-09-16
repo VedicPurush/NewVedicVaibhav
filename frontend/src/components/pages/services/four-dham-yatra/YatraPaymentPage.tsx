@@ -25,7 +25,7 @@ const YATRA_COUPONS = [
   { code: "DIVINE150", label: "Divine Blessing ₹150 Off", discount: 200, minPackagePrice: 5000, visible: true },
   // { code: "YATRA500", label: "Premium Yatra ₹500 Off", discount: 500, minPackagePrice: 9000, visible: true }, // Hidden for now (Max 200 discount)
   { code: "TEST1", label: "Hidden Test Coupon", discount: -1, minPackagePrice: 0, visible: false },
-  { code: "JATIN@100", label: "Special Testing Code", discount: -1, minPackagePrice: 0, visible: false },
+  { code: "TYAGI@19", label: "Special Testing Code", discount: -1, minPackagePrice: 0, visible: false },
 ];
 
 const InlineError = ({ message }: { message?: string }) => (

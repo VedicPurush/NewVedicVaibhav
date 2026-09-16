@@ -8,6 +8,10 @@ export interface IPitruPujaBooking extends Document, IInternationalFields {
   packageLabel: string;
   personCount: number;
   price: number;
+  /** Package price before any coupon, INR. */
+  originalAmount?: number;
+  promoCode?: string;
+  discountAmount?: number;
   whatsappNumber: string;
   callingNumber?: string;
   kartaName: string;
@@ -31,6 +35,9 @@ const pitruPujaBookingSchema = new Schema<IPitruPujaBooking>(
     packageLabel: { type: String, required: true, trim: true },
     personCount: { type: Number, required: true },
     price: { type: Number, required: true },
+    originalAmount: { type: Number },
+    promoCode: { type: String, trim: true },
+    discountAmount: { type: Number, default: 0 },
     whatsappNumber: { type: String, required: true, trim: true },
     callingNumber: { type: String, trim: true },
     kartaName: { type: String, required: true, trim: true },

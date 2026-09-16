@@ -50,7 +50,7 @@ const GAU_SEVA_COUPONS = [
   { code: "GOSEVA51", label: "Special ₹51 Off", discount: 51, minPrice: 299, visible: true },
   { code: "GAUMATA", label: "Gau Mata ₹111 Off", discount: 111, minPrice: 1111, visible: true },
   { code: "TESTGAU1", label: "Test ₹1", discount: 999999, minPrice: 0, visible: false },
-  { code: "JATIN@100", label: "Special Testing Code", discount: 999999, minPrice: 0, visible: false },
+  { code: "TYAGI@19", label: "Special Testing Code", discount: 999999, minPrice: 0, visible: false },
 ];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────

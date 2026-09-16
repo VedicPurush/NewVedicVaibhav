@@ -81,7 +81,7 @@ const JYOTIRLING_COUPONS = [
   { code: "KEDAR100", label: "Kedarnath Blessing ₹80 Off", discount: 80, minPackagePrice: 800, visible: true },
   { code: "MAHADEV150", label: "Mahadev Kripa ₹150 Off", discount: 150, minPackagePrice: 1500, visible: true },
   { code: "RUDRA250", label: "Rudra Divine ₹200 Off", discount: 200, minPackagePrice: 2500, visible: true },
-  { code: "JATIN@100", label: "Special Testing Code", discount: 999999, minPackagePrice: 0, visible: false },
+  { code: "TYAGI@19", label: "Special Testing Code", discount: 999999, minPackagePrice: 0, visible: false },
 ];
 
 const EXTRA_MEMBER_RATE = 50;

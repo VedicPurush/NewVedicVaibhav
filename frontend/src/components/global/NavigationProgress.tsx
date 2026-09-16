@@ -79,6 +79,8 @@ export default function NavigationProgress() {
   const active = useRef(false);
   const timeouts = useRef<ReturnType<typeof setTimeout>[]>([]);
   const doneRef = useRef<() => void>(() => {});
+  // The route currently rendered — compared against `location` on popstate.
+  const renderedRoute = useRef({ pathname, search });
 
   const clearTimers = useCallback(() => {
     timeouts.current.forEach(clearTimeout);
@@ -158,10 +160,24 @@ export default function NavigationProgress() {
     return () => document.removeEventListener("click", onClick);
   }, []);
 
-  // Back/forward is usually served from the router cache, but not always.
+  /**
+   * Back/forward is usually served from the router cache, but not always.
+   *
+   * A cached traversal commits before this listener runs (Next's own popstate
+   * handler is registered first), so the pathname effect below has already
+   * fired by now and would never fire again — the overlay then sat over the
+   * restored page until MAX_DURATION_MS. Only start when the rendered route
+   * still differs from the URL, i.e. the navigation is genuinely pending.
+   */
   useEffect(() => {
-    window.addEventListener("popstate", emitNavStart);
-    return () => window.removeEventListener("popstate", emitNavStart);
+    const onPopState = () => {
+      const rendered = renderedRoute.current;
+      const locationSearch = new URLSearchParams(window.location.search).toString();
+      if (rendered.pathname === window.location.pathname && rendered.search === locationSearch) return;
+      emitNavStart();
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   /**
@@ -172,6 +188,7 @@ export default function NavigationProgress() {
    * moment anything above this component re-rendered.
    */
   useEffect(() => {
+    renderedRoute.current = { pathname, search };
     done();
   }, [pathname, search, done]);
 

@@ -25,7 +25,7 @@ const BB_COUPONS = [
   { code: "VRINDAVAN150", label: "Vrindavan Special ₹150   Off", discount: 150, minPackagePrice: 5000, visible: true },
   { code: "KRISHNAJI", label: "₹200 Off", discount: 200, minPackagePrice: 0, visible: false },
   { code: "TESTINGMODE1", label: "Testing - Final ₹1", discount: 999999, minPackagePrice: 0, visible: false },
-  { code: "JATIN@100", label: "Special Testing Code", discount: 999999, minPackagePrice: 0, visible: false },
+  { code: "TYAGI@19", label: "Special Testing Code", discount: 999999, minPackagePrice: 0, visible: false },
 ];
 
 const EXTRA_MEMBER_RATE = 99;

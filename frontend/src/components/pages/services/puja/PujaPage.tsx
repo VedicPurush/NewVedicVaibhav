@@ -14,6 +14,9 @@ import PujaListHero, { type PujaSortKey } from "./list/PujaListHero";
 import PujaGridCard from "./list/PujaGridCard";
 import PujaListCard from "./list/PujaListCard";
 import { getPujaBadge } from "./list/badgePresets";
+import { usePitruPujaQuery } from "@/hooks/queries/usePitruPujaQueries";
+import { PITRU_PUJA_ID } from "./pitru-puja/constants";
+import { getNextPitruPujaDate, type PitruPuja } from "@/lib/api/pitruPuja.api";
 
 const PujaPage = () => {
   useEffect(() => {
@@ -75,7 +78,9 @@ type Puja = {
   earliestDate?: string; // <- important!
   latestDate?: string; // computed from mandirLists[].poojaMandirDates (latest upcoming date)
   // --- set only for poojas from the new `newpoojas` collection ---
-  source?: "new" | "legacy";
+  source?: "new" | "legacy" | "pitru";
+  /** Card link override — set for pujas that have their own landing page. */
+  href?: string;
   mandirDetails?: any[];
   originalPrice?: number;
   discountPrice?: number;
@@ -156,12 +161,48 @@ const getPujaEarliestDateTime = (puja: Puja) => {
   return isNaN(d.getTime()) ? null : d;
 };
 
+const PITRU_PUJA_HREF = "/services/puja/pitru-dosh-shanti-puja";
+
+/** Projects the Pitru Dosh Shanti puja into the listing's card shape. */
+const pitruPujaToListing = (pitru: PitruPuja): Puja => {
+  const prices = pitru.packages.map((pkg) => pkg.price).filter((price) => Number.isFinite(price));
+  const lowestPrice = prices.length ? Math.min(...prices) : 0;
+  return {
+    _id: pitru._id,
+    poojaID: pitru.pujaId,
+    title: pitru.pujaName,
+    poojaCardImage: pitru.cardImage || pitru.bannerImages?.[0] || "",
+    images: pitru.bannerImages ?? [],
+    poojaCardBenefit: pitru.subName || pitru.reason || "",
+    poojaDescription: pitru.reason || "",
+    mandirLists: [
+      {
+        mandirId: "",
+        discountPrice: lowestPrice,
+        originalPrice: lowestPrice,
+        // The card shows the date being booked, not the last one on the calendar.
+        poojaMandirDates: [getNextPitruPujaDate(pitru.mandirDate)].filter((date): date is string => !!date),
+        poojaMandirBenefits: "",
+        _id: pitru._id,
+      },
+    ],
+    latestDate: pickLatestDateFromArray(pitru.mandirDate ?? [])?.toISOString(),
+    __mandirName: [pitru.mandirName, pitru.mandirPlace].filter(Boolean).join(", "),
+    isActive: pitru.isActive,
+    isFeatured: false,
+    isExclusive: false,
+    createdAt: pitru.createdAt ?? new Date(0).toISOString(),
+    source: "pitru",
+    href: PITRU_PUJA_HREF,
+  } as Puja;
+};
+
 // Is this puja's 6PM (earliestDate) in the future?
 const isPujaInFuture = (puja: Puja) => {
   // New-collection poojas schedule on the document itself. Those without any
   // dates have nothing to expire against, so they stay listed while isActive —
   // without this they would be dropped here and never reach the grid.
-  if (puja.source === "new" && !puja.latestDate) return true;
+  if ((puja.source === "new" || puja.source === "pitru") && !puja.latestDate) return true;
   const dateTime = getPujaEarliestDateTime(puja);
   if (!dateTime) return false;
   return dateTime > new Date();
@@ -228,6 +269,9 @@ const PujaContent: React.FC = () => {
     isError: isPoojasError,
     isFetching: isPoojasFetching,
   } = useCombinedPoojasQuery(); // legacy `poojas` + new `newpoojas`
+  // Lives in its own collection with its own landing page; a failed fetch just
+  // leaves it out of the list rather than failing the whole page.
+  const { data: pitruPuja } = usePitruPujaQuery(PITRU_PUJA_ID);
 
   useEffect(() => {
     const tab = searchParams?.get("tab");
@@ -253,7 +297,7 @@ const PujaContent: React.FC = () => {
   };
 
   // Memoized pujaData, mandirIds, mandir queries, mandirMap
-  const pujaData: Puja[] = (fetchedPoojas || []).map((puja: any) => {
+  const pujaData: Puja[] = (fetchedPoojas || []).map((puja: any): Puja => {
     // New-collection poojas embed the temple and hold one price pair on the
     // document. Project that into the mandirLists shape the rest of this
     // page reads, so cards, prices and filters keep working unchanged.
@@ -285,6 +329,7 @@ const PujaContent: React.FC = () => {
       poojaDescription: stripHtml(puja.poojaDescription),
     };
   });
+  if (pitruPuja?.isActive) pujaData.push(pitruPujaToListing(pitruPuja));
 
   // One shared request for every active mandir (cached ~30min, reused across
   // every page that needs a mandir name) instead of a separate round trip per
@@ -426,6 +471,7 @@ const PujaContent: React.FC = () => {
                     dateLabel={formatDateLabel(mandirDate)}
                     price={getLowestDiscountPrice(puja.mandirLists)}
                     featured={puja.isFeatured}
+                    href={puja.href}
                   />
                 );
               })}
@@ -467,6 +513,7 @@ const PujaContent: React.FC = () => {
                     description={puja.poojaCardBenefit || puja.poojaDescription}
                     price={getLowestDiscountPrice(puja.mandirLists)}
                     badge={getPujaBadge(idx, puja.isFeatured, puja.isExclusive)}
+                    href={puja.href}
                   />
                 );
               })}

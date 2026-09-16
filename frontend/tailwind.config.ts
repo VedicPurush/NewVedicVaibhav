@@ -48,6 +48,7 @@ const config: Config = {
         display: ["Cinzel", "serif"],
         elegant: ["Cormorant Garamond", "serif"],
         body: ["Poppins", "sans-serif"],
+        heading: ["Kurale", "serif"],
       },
     },
   },
