@@ -50,20 +50,23 @@ const PujaCountdown: React.FC<{ isoDate?: string }> = ({ isoDate }) => {
 
   return (
     <div
-      className="flex items-center justify-between gap-2 rounded-t-xl bg-[#FFF1F1] border border-b-0 border-[#F3C9C9] pl-3 pr-2.5 py-1.5"
+      className="flex items-center justify-between gap-1.5 min-[360px]:gap-2 rounded-t-xl bg-[#FFF1F1] border border-b-0 border-[#F3C9C9] pl-2.5 pr-2 min-[360px]:pl-3 min-[360px]:pr-2.5 py-1.5"
       role="timer"
       aria-live="off"
     >
-      <span className="min-w-0 text-[12px] md:text-[13px] font-semibold text-[#7A0F1F] leading-tight">
+      {/* Four value chips plus their labels leave ~90px here at 320px, so the
+          label steps down rather than wrapping and pushing the sticky bar taller
+          than the spacer that reserves room for it. */}
+      <span className="min-w-0 text-[11px] min-[360px]:text-[12px] md:text-[13px] font-semibold text-[#7A0F1F] leading-tight">
         Puja begins in
       </span>
       <div className="shrink-0 flex items-center justify-end gap-1.5 min-[380px]:gap-2.5 md:gap-4">
         {UNITS.map((unit, i) => (
           <div key={unit.label} className="flex items-center gap-0.5 min-[380px]:gap-1">
-            <span className="flex items-center justify-center h-7 min-w-[30px] px-1.5 rounded-[9px] bg-gradient-to-b from-[#A3213A] to-[#7A0F1F] text-white text-[14px] font-bold tabular-nums leading-none shadow-[0_1px_3px_rgba(122,15,31,0.25)]">
+            <span className="flex items-center justify-center h-7 min-w-[27px] px-1 min-[380px]:min-w-[30px] min-[380px]:px-1.5 rounded-[9px] bg-gradient-to-b from-[#A3213A] to-[#7A0F1F] text-white text-[13px] min-[380px]:text-[14px] font-bold tabular-nums leading-none shadow-[0_1px_3px_rgba(122,15,31,0.25)]">
               {started ? pad(values[i]) : "--"}
             </span>
-            <span className="text-[10px] font-medium text-stone-500 leading-none">
+            <span className="shrink-0 text-[10px] font-medium text-stone-500 leading-none">
               <span className="hidden min-[380px]:inline">{unit.label}</span>
               <span className="min-[380px]:hidden">{unit.short}</span>
             </span>

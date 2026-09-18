@@ -228,6 +228,17 @@ const PitruPujaPage: React.FC<PitruPujaPageProps> = ({ serverPuja }) => {
         .pitru-rich-text span { background-color: transparent !important; color: inherit !important; }
         .pitru-rich-text p:empty { display: none; }
         .pitru-rich-text p { margin-bottom: 0.25rem; }
+        /* Admin-pasted copy can carry a wide image, table or an unbroken URL —
+           clamp it so it never widens the page on a 320px phone. */
+        .pitru-rich-text { overflow-wrap: break-word; }
+        .pitru-rich-text img, .pitru-rich-text table { max-width: 100%; height: auto; }
+        /* The tab strip scrolls below ~380px. The global scrollbar rules paint a
+           thick orange bar there, which reads as a second border under the tabs,
+           so this one is 3px and barely tinted. */
+        .pitru-tabs { scrollbar-width: thin; scrollbar-color: rgba(122,15,31,0.28) transparent; }
+        .pitru-tabs::-webkit-scrollbar { height: 3px; background: transparent; }
+        .pitru-tabs::-webkit-scrollbar-track { background: transparent; }
+        .pitru-tabs::-webkit-scrollbar-thumb { background: rgba(122,15,31,0.28); border-radius: 999px; }
       `}</style>
       <Navbar activeIndex="puja" />
 
@@ -269,7 +280,7 @@ const PitruPujaPage: React.FC<PitruPujaPageProps> = ({ serverPuja }) => {
           )}
 
           {/* Title + subtitle + reason */}
-          <h1 className="font-heading font-bold text-[26px] md:text-[34px] leading-[1.15] text-[#7A0F1F] mt-3">
+          <h1 className="font-heading font-bold text-[24px] min-[360px]:text-[26px] md:text-[34px] leading-[1.15] text-[#7A0F1F] mt-3 break-words">
             {pitruPuja.pujaName}
           </h1>
           {pitruPuja.subName && (
@@ -285,26 +296,35 @@ const PitruPujaPage: React.FC<PitruPujaPageProps> = ({ serverPuja }) => {
 
           {/* Mandir + Date strip */}
           {(pitruPuja.mandirName || mandirDate) && (
-            <div className="flex items-stretch bg-[#8D1B2E] rounded-xl mt-4 py-3 text-white">
+            <div className="flex items-stretch bg-[#8D1B2E] rounded-xl mt-4 py-2.5 md:py-3 text-white">
               {pitruPuja.mandirName && (
-                <div className="flex items-center gap-3 flex-1 px-4 min-w-0">
-                  <TempleHinduIcon style={{ fontSize: 26 }} className="shrink-0" />
+                <div className="flex items-center gap-2 md:gap-3 flex-1 px-3 md:px-4 min-w-0">
+                  <TempleHinduIcon style={{ fontSize: 24 }} className="shrink-0" />
                   <div className="leading-tight min-w-0">
-                    <div className="italic text-[13px] md:text-[14px]">{pitruPuja.mandirName}</div>
+                    <div className="italic text-[12px] md:text-[14px] break-words line-clamp-2">
+                      {pitruPuja.mandirName}
+                    </div>
                     {pitruPuja.mandirPlace && (
-                      <div className="italic text-[10px] md:text-[11px] opacity-80">{pitruPuja.mandirPlace}</div>
+                      <div className="italic text-[10px] md:text-[11px] opacity-80 truncate">
+                        {pitruPuja.mandirPlace}
+                      </div>
                     )}
                   </div>
                 </div>
               )}
               {pitruPuja.mandirName && mandirDate && <div className="w-px bg-white/70 my-0.5" />}
               {mandirDate && (
-                <div className="flex items-center gap-2 basis-[30%] shrink-0 min-w-fit pl-3 pr-2 whitespace-nowrap">
-                  <CalendarMonthOutlinedIcon style={{ fontSize: 20 }} className="shrink-0" />
-                  <div className="leading-tight">
-                    <div className="italic text-[13px] md:text-[14px]">{mandirDate}</div>
+                <div className="flex items-center gap-1.5 md:gap-2 shrink-0 min-w-fit pl-2.5 pr-2 md:basis-[30%] md:pl-3">
+                  <CalendarMonthOutlinedIcon style={{ fontSize: 18 }} className="shrink-0" />
+                  <div className="leading-tight min-w-0">
+                    <div className="italic text-[12px] md:text-[14px] whitespace-nowrap">{mandirDate}</div>
+                    {/* Capped rather than wrapped: this column never gives width
+                        back, so a long festive name would leave the mandir name a
+                        two-character strip on a 320px screen. */}
                     {pitruPuja.festiveName && (
-                      <div className="italic text-[10px] md:text-[11px] opacity-80">{pitruPuja.festiveName}</div>
+                      <div className="italic text-[10px] md:text-[11px] opacity-80 truncate max-w-[84px] min-[360px]:max-w-[104px] md:max-w-none">
+                        {pitruPuja.festiveName}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -313,23 +333,25 @@ const PitruPujaPage: React.FC<PitruPujaPageProps> = ({ serverPuja }) => {
           )}
 
           {/* Feature cards */}
-          <div className="grid grid-cols-3 gap-2 md:gap-4 mt-4">
+          <div className="grid grid-cols-3 gap-1.5 min-[360px]:gap-2 md:gap-4 mt-4">
             {featureCards.map((card, index) => {
               const FallbackIcon = FEATURE_FALLBACK_ICONS[index % FEATURE_FALLBACK_ICONS.length];
               return (
                 <div
                   key={`${card.title}-${index}`}
-                  className="bg-white border border-stone-200 rounded-2xl shadow-[0_2px_6px_rgba(0,0,0,0.12)] px-1.5 py-4 flex flex-col items-center text-center gap-1.5"
+                  className="bg-white border border-stone-200 rounded-2xl shadow-[0_2px_6px_rgba(0,0,0,0.12)] px-1 min-[360px]:px-1.5 py-3.5 md:py-4 flex flex-col items-center text-center gap-1.5 min-w-0"
                 >
                   {card.image ? (
                     <img loading="lazy" src={card.image} alt="" className="w-8 h-8 object-contain" />
                   ) : (
                     <FallbackIcon style={{ fontSize: 28, color: MAROON }} />
                   )}
-                  <div className="text-[12px] md:text-[13px] font-medium text-[#7A0F1F] leading-tight">
+                  <div className="text-[11px] min-[360px]:text-[12px] md:text-[13px] font-medium text-[#7A0F1F] leading-tight break-words">
                     {card.title}
                   </div>
-                  <div className="text-[9.5px] md:text-[11px] text-stone-500 leading-snug">{card.description}</div>
+                  <div className="text-[9.5px] md:text-[11px] text-stone-500 leading-snug break-words">
+                    {card.description}
+                  </div>
                 </div>
               );
             })}
@@ -338,13 +360,13 @@ const PitruPujaPage: React.FC<PitruPujaPageProps> = ({ serverPuja }) => {
 
         {/* Section tabs */}
         <div className="mt-4 border-y border-stone-300">
-          <div className="max-w-3xl mx-auto px-3 md:px-0 flex justify-between gap-3 overflow-x-auto">
+          <div className="pitru-tabs max-w-3xl mx-auto px-3 md:px-0 flex justify-between gap-2 md:gap-3 overflow-x-auto">
             {sections.map((key) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => scrollToSection(key)}
-                className={`whitespace-nowrap py-2.5 text-[12px] md:text-[14px] border-b-2 transition-colors ${
+                className={`shrink-0 whitespace-nowrap py-2.5 text-[11.5px] min-[360px]:text-[12px] md:text-[14px] border-b-2 transition-colors ${
                   activeSection === key
                     ? "font-semibold text-stone-900 border-[#7A0F1F]"
                     : "text-stone-700 border-transparent hover:text-stone-900"
@@ -439,7 +461,7 @@ const PitruPujaPage: React.FC<PitruPujaPageProps> = ({ serverPuja }) => {
                       role="radio"
                       aria-checked={isSelected}
                       onClick={() => setSelectedPackageId(pkg.id)}
-                      className={`w-full flex items-center gap-3 rounded-xl border px-2 py-3 text-left transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.08)] ${
+                      className={`w-full flex items-center gap-2 min-[360px]:gap-3 rounded-xl border px-2 py-3 text-left transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.08)] ${
                         isSelected
                           ? "bg-gradient-to-r from-[#FFD9D9] to-[#FFF6F6] border-[#C0445A]"
                           : "bg-white border-stone-200"
@@ -450,18 +472,22 @@ const PitruPujaPage: React.FC<PitruPujaPageProps> = ({ serverPuja }) => {
                           loading="lazy"
                           src={pkg.image}
                           alt={pkg.title}
-                          className="w-24 h-16 md:w-32 md:h-20 object-contain shrink-0"
+                          className="w-20 h-14 min-[360px]:w-24 min-[360px]:h-16 md:w-32 md:h-20 object-contain shrink-0"
                         />
                       )}
                       <div className="flex-1 min-w-0 font-body">
-                        <div className="text-[15px] md:text-[17px] font-medium text-stone-900">{pkg.title}</div>
+                        <div className="text-[14px] min-[360px]:text-[15px] md:text-[17px] font-medium text-stone-900 break-words">
+                          {pkg.title}
+                        </div>
                         <span
                           className={`inline-flex items-center gap-0.5 rounded-full text-[10px] md:text-[12px] px-2 py-0.5 mt-0.5 ${style.chip}`}
                         >
                           <PersonOutlineIcon style={{ fontSize: 13 }} />
                           For {pkg.persons} Pitru
                         </span>
-                        <div className={`text-[20px] md:text-[22px] font-medium leading-tight mt-0.5 ${style.price}`}>
+                        <div
+                          className={`text-[18px] min-[360px]:text-[20px] md:text-[22px] font-medium leading-tight mt-0.5 ${style.price}`}
+                        >
                           {formatPrice(pkg.price)}
                         </div>
                       </div>
@@ -527,13 +553,17 @@ const PitruPujaPage: React.FC<PitruPujaPageProps> = ({ serverPuja }) => {
               <button
                 type="button"
                 onClick={handleProceed}
-                className="w-full flex items-center justify-between gap-3 rounded-xl [&:not(:first-child)]:rounded-t-none bg-[#6B0F1A] hover:bg-[#560b14] text-white px-4 py-2 text-left transition-colors"
+                className="w-full flex items-center justify-between gap-2 min-[360px]:gap-3 rounded-xl [&:not(:first-child)]:rounded-t-none bg-[#6B0F1A] hover:bg-[#560b14] text-white px-3 min-[360px]:px-4 py-2 text-left transition-colors"
               >
                 <span className="min-w-0 leading-tight">
-                  <span className="block text-[17px] font-medium">{formatPrice(selectedPackage.price)}</span>
+                  <span className="block text-[16px] min-[360px]:text-[17px] font-medium whitespace-nowrap">
+                    {formatPrice(selectedPackage.price)}
+                  </span>
                   <span className="block text-[12px] truncate">{selectedPackage.title}</span>
                 </span>
-                <span className="shrink-0 w-[40%] text-center text-[14px] font-medium tracking-wide">Proceed</span>
+                <span className="shrink-0 w-[36%] min-[360px]:w-[40%] text-center text-[13px] min-[360px]:text-[14px] font-medium tracking-wide">
+                  Proceed
+                </span>
               </button>
             ) : (
               <button
