@@ -6,8 +6,10 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   ClockCircleOutlined,
+  DownOutlined,
+  UpOutlined,
 } from "@ant-design/icons";
-import React from "react";
+import React, { useState } from "react";
 import ReviewComponent from "../PoojaBookings/ReviewComponent";
 
 const { Title, Text } = Typography;
@@ -87,6 +89,14 @@ const labelStyle = {
   marginRight: 6,
 };
 
+/** One label/value pair in the phone card's details panel. */
+const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
+  <div style={{ ...textStyle, fontSize: 12, display: "flex", gap: 6 }}>
+    <span style={{ fontWeight: 600, flexShrink: 0 }}>{label}:</span>
+    <span style={{ minWidth: 0, wordBreak: "break-word", color: "rgba(0,0,0,0.7)" }}>{value}</span>
+  </div>
+);
+
 const ChadhavaBookingCard: React.FC<ChadhavaBookingCardProps> = ({
   chadhavaId,
   orderID,
@@ -107,6 +117,7 @@ const ChadhavaBookingCard: React.FC<ChadhavaBookingCardProps> = ({
 }) => {
   const screens = useBreakpoint();
   const isMobile = !screens.md;
+  const [showDetails, setShowDetails] = useState(false);
 
   const showFamily =
     familyMembers && familyMembers.trim().length > 0 && familyMembers !== "N/A";
@@ -144,17 +155,17 @@ const ChadhavaBookingCard: React.FC<ChadhavaBookingCardProps> = ({
       {/* Gradient Header */}
       <div
         style={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: "linear-gradient(135deg, #7A0F1F 0%, #C2410C 100%)",
           color: "#fff",
         }}
-        className="py-[12px] pl-[4px]   flex flex-col"
+        className={`flex flex-col ${isMobile ? "pb-[8px]" : "py-[12px] pl-[4px]"}`}
       >
         <div
           className="w-full flex items-start gap-2"
           style={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: "linear-gradient(135deg, #7A0F1F 0%, #C2410C 100%)",
             color: "#fff",
-            padding: "12px 16px",
+            padding: isMobile ? "10px 12px 2px" : "12px 16px",
           }}
         >
           {/* Title gets every pixel the row isn't using — flexbox computes the
@@ -165,7 +176,12 @@ const ChadhavaBookingCard: React.FC<ChadhavaBookingCardProps> = ({
             <Title
               level={5}
               className="!m-0 "
-              style={{ color: "#fff", fontFamily: "Poppins", lineHeight: 1.1 }}
+              style={{
+                color: "#fff",
+                fontFamily: "Poppins",
+                lineHeight: 1.15,
+                fontSize: isMobile ? 14.5 : undefined,
+              }}
             >
               {pujaTitle}
             </Title>
@@ -184,12 +200,152 @@ const ChadhavaBookingCard: React.FC<ChadhavaBookingCardProps> = ({
           )}
         </div>
 
-        <Text className="pl-4" style={{ color: "#e0e0e0", ...textStyle }}>
+        <Text
+          className={isMobile ? "pl-3" : "pl-4"}
+          style={{ color: "#e0e0e0", ...textStyle, fontSize: isMobile ? 11.5 : 13 }}
+        >
           {temple}
         </Text>
       </div>
 
-      {/* Info Section */}
+      {isMobile ? (
+        /* Phone body. Only the date, price, status and what was offered stay on
+           the face of the card; the identifiers and the item write-ups — which
+           ran to a full screen of text — sit behind the toggle. */
+        <div style={{ padding: "12px 14px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+            }}
+          >
+            <Text style={{ ...textStyle, fontSize: 12.5, color: "rgba(0,0,0,0.65)" }}>
+              {formatSafeDate(date)}
+            </Text>
+            <div
+              style={{
+                backgroundColor: "#FDE4E4",
+                color: "#7A0F1F",
+                fontWeight: 600,
+                borderRadius: 6,
+                padding: "4px 10px",
+                fontSize: 13,
+                fontFamily: "Poppins",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {paidMoney({ amount: totalPrice, currency, chargedAmount })}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 8 }}>{getStatusTag(status)}</div>
+
+          {accessories && accessories.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+              {accessories.map((item) => (
+                <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <img
+                    loading="lazy"
+                    src={item.images?.[0] ?? item.image}
+                    alt=""
+                    style={{
+                      width: 38,
+                      height: 38,
+                      objectFit: "cover",
+                      borderRadius: 6,
+                      flexShrink: 0,
+                      border: "1px solid #e0e0e0",
+                    }}
+                  />
+                  <Text style={{ ...textStyle, fontSize: 12.5, fontWeight: 600, minWidth: 0 }}>
+                    {item.name}
+                    {item.quantity > 1 && (
+                      <span style={{ fontWeight: 400, color: "#666" }}> × {item.quantity}</span>
+                    )}
+                  </Text>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div
+            onClick={() => setShowDetails((v) => !v)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              gap: 4,
+              marginTop: 10,
+              paddingTop: 8,
+              borderTop: "1px solid rgba(0,0,0,0.1)",
+              color: "#FF6505",
+              fontFamily: "Poppins",
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: "pointer",
+            }}
+          >
+            {showDetails ? "Hide Details" : "View Details"}
+            {showDetails ? (
+              <UpOutlined style={{ fontSize: 10 }} />
+            ) : (
+              <DownOutlined style={{ fontSize: 10 }} />
+            )}
+          </div>
+
+          {showDetails && (
+            <div
+              style={{
+                marginTop: 8,
+                backgroundColor: "#f7f7f9",
+                border: "1px solid rgba(0,0,0,0.08)",
+                borderRadius: 8,
+                padding: 10,
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
+            >
+              <DetailRow label="User" value={name} />
+              <DetailRow label="Gotra" value={gotra || "N/A"} />
+              <DetailRow label="Booking Date" value={formatSafeDate(bookingDate)} />
+              {showFamily && <DetailRow label="Family Members" value={familyMembers} />}
+              {showAddress && <DetailRow label="Address" value={address} />}
+              <DetailRow label="Transaction ID" value={transactionID} />
+              <DetailRow label="Order ID" value={orderID} />
+
+              {accessories?.some((item) => item.desc) && (
+                <>
+                  <Divider style={{ fontFamily: "Poppins", fontSize: 12, margin: "4px 0" }}>
+                    Chadhava Details
+                  </Divider>
+                  {accessories.map((item) =>
+                    item.desc ? (
+                      <div key={item.id}>
+                        <Text style={{ ...textStyle, fontSize: 12, fontWeight: 600 }}>
+                          {item.name}
+                        </Text>
+                        <Text
+                          style={{
+                            ...textStyle,
+                            fontSize: 11.5,
+                            color: "#666",
+                            display: "block",
+                          }}
+                        >
+                          {item.desc}
+                        </Text>
+                      </div>
+                    ) : null,
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
       <div style={{ padding: "14px 16px" }}>
         <Row gutter={[12, 8]} align="middle">
           {/* Info Grid */}
@@ -254,8 +410,8 @@ const ChadhavaBookingCard: React.FC<ChadhavaBookingCardProps> = ({
           >
             <div
               style={{
-                backgroundColor: "#f0f2ff",
-                color: "#2f3e9e",
+                backgroundColor: "#FDE4E4",
+                color: "#7A0F1F",
                 fontWeight: 600,
                 borderRadius: 6,
                 padding: "6px 12px",
@@ -416,6 +572,7 @@ const ChadhavaBookingCard: React.FC<ChadhavaBookingCardProps> = ({
           `}</style>
         </Row>
       </div>
+      )}
     </Card>
   );
 };

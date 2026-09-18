@@ -1,4 +1,8 @@
+"use client";
+
+import { useState } from "react";
 import { paidMoney } from "@/lib/currency";
+import DetailsToggle from "../DetailsToggle";
 
 export interface PersonalizedBookingCardProps {
   orderId: string;
@@ -22,6 +26,8 @@ export interface PersonalizedBookingCardProps {
   isApproved: boolean;
   isCompleted: boolean;
   createdAt?: string;
+  /** Drives the collapsed phone layout; the parent already tracks the breakpoint. */
+  isSmallScreen?: boolean;
 }
 
 const fmtDate = (val?: string) => {
@@ -42,12 +48,20 @@ const StatusBadge = ({ label, color }: { label: string; color: string }) => (
   </span>
 );
 
+/**
+ * `min-w-0` on the wrapper and `break-words` on the value are both needed: a
+ * grid item's automatic minimum size is its min-content width, so an address or
+ * an email — one long unbreakable token — otherwise pushes the item past its
+ * track and gets clipped by the card's overflow-hidden.
+ */
 const Field = ({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) => (
-  <div>
+  <div className="min-w-0">
     <span className="text-xs font-semibold uppercase tracking-wider block mb-0.5" style={{ color: "#d97706" }}>
       {label}
     </span>
-    <span className={`text-sm ${accent ? "font-bold text-orange-600" : "font-semibold text-gray-800"}`}>
+    <span
+      className={`text-sm block break-words ${accent ? "font-bold text-orange-600" : "font-semibold text-gray-800"}`}
+    >
       {value}
     </span>
   </div>
@@ -56,8 +70,14 @@ const Field = ({ label, value, accent = false }: { label: string; value: string;
 const PersonalizedBookingCard = ({
   orderId, poojaName, mandirName, devoteeName, fullName, gotra,
   mobile, email, poojaDate, price, currency, chargedAmount, description, link,
-  prasadDeliveryStatus, paymentStatus, isApproved, isCompleted, createdAt,
+  prasadDeliveryStatus, paymentStatus, isApproved, isCompleted, createdAt, isSmallScreen,
 }: PersonalizedBookingCardProps) => {
+  const [showDetails, setShowDetails] = useState(false);
+
+  // A phone keeps the puja, its status, the date and the amount on the face of
+  // the card. A wide screen shows everything and never renders the toggle.
+  const detailsOpen = !isSmallScreen || showDetails;
+
   const safeNames = fullName?.length ? fullName : devoteeName ? [devoteeName] : [];
   const safeGotra = gotra?.length ? gotra : [];
 
@@ -75,9 +95,11 @@ const PersonalizedBookingCard = ({
           {mandirName && (
             <p className="text-sm text-gray-500 font-medium">{mandirName}</p>
           )}
-          <p className="text-gray-400 text-xs font-medium mt-0.5">
-            Order ID: <span className="text-gray-600 font-semibold font-mono">{orderId}</span>
-          </p>
+          {detailsOpen && (
+            <p className="text-gray-400 text-xs font-medium mt-0.5 break-all">
+              Order ID: <span className="text-gray-600 font-semibold font-mono">{orderId}</span>
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           <StatusBadge
@@ -96,22 +118,26 @@ const PersonalizedBookingCard = ({
       {/* Main details grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4 mb-5">
         <Field label="Puja Date" value={fmtDate(poojaDate)} />
-        <Field label="Mobile" value={`+91 ${mobile}`} />
         <Field
           label="Amount"
           // Shown in the currency this booking was PAID in — see paidMoney().
           value={price !== null ? paidMoney({ amount: price, currency, chargedAmount }) : "To be confirmed"}
           accent={price !== null}
         />
-        {email && <Field label="Email" value={email} />}
-        {prasadDeliveryStatus && (
-          <Field label="Prasad Status" value={prasadDeliveryStatus.charAt(0).toUpperCase() + prasadDeliveryStatus.slice(1)} />
+        {detailsOpen && (
+          <>
+            <Field label="Mobile" value={`+91 ${mobile}`} />
+            {email && <Field label="Email" value={email} />}
+            {prasadDeliveryStatus && (
+              <Field label="Prasad Status" value={prasadDeliveryStatus.charAt(0).toUpperCase() + prasadDeliveryStatus.slice(1)} />
+            )}
+            {createdAt && <Field label="Booked On" value={fmtDate(createdAt)} />}
+          </>
         )}
-        {createdAt && <Field label="Booked On" value={fmtDate(createdAt)} />}
       </div>
 
       {/* Devotees */}
-      {safeNames.length > 0 && (
+      {detailsOpen && safeNames.length > 0 && (
         <div className="mb-4">
           <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#d97706" }}>
             Devotees
@@ -130,7 +156,7 @@ const PersonalizedBookingCard = ({
       )}
 
       {/* Description */}
-      {description && (
+      {detailsOpen && description && (
         <div className="mb-4 bg-orange-50/60 border border-orange-100 rounded-xl px-4 py-3">
           <p className="text-xs font-semibold uppercase tracking-wider text-amber-700 mb-1">Package Details</p>
           <p className="text-sm text-gray-700 leading-relaxed">{description}</p>
@@ -157,6 +183,10 @@ const PersonalizedBookingCard = ({
         <div className="rounded-xl px-4 py-3 text-sm font-semibold text-purple-700 flex items-center gap-2 mb-2" style={{ background: "#f3e8ff", border: "1px solid #e9d5ff" }}>
           ✅ Your Personalized Puja has been completed. May divine blessings be upon you 🙏
         </div>
+      )}
+
+      {isSmallScreen && (
+        <DetailsToggle open={showDetails} onToggle={() => setShowDetails((v) => !v)} />
       )}
 
       {/* Footer */}

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { paidMoney } from "@/lib/currency";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import DetailsToggle from "../DetailsToggle";
 
 interface Booking {
   orderID: string;
@@ -52,7 +54,178 @@ const readMobile = (): string => {
   return mobile;
 };
 
+const fmtDay = (value?: string) =>
+  value
+    ? new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+    : "—";
+
+const LABEL = "text-[11px] md:text-xs font-bold uppercase tracking-wider mb-0.5";
+
+/**
+ * Its own component because each card owns whether it is expanded, and a hook
+ * cannot live inside the .map() that renders them.
+ */
+const BankeBihariBookingCard = ({
+  booking,
+  index,
+  isSmallScreen,
+}: {
+  booking: Booking;
+  index: number;
+  isSmallScreen: boolean;
+}) => {
+  const [showDetails, setShowDetails] = useState(false);
+
+  // A phone keeps the package, amount and start date on the face of the card.
+  // A wide screen has room for everything and never shows the toggle.
+  const detailsOpen = !isSmallScreen || showDetails;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      className="rounded-2xl overflow-hidden"
+      style={{
+        background: "#fff",
+        border: "1px solid #f5d5a8",
+        boxShadow: "0 2px 16px rgba(200,100,0,0.06)",
+      }}
+    >
+      {/* Header — the package is what identifies the seva at a glance; the
+          booking id is a support reference and moves into the details. */}
+      <div
+        className="flex items-center justify-between gap-3 px-4 md:px-5 py-2.5 md:py-3"
+        style={{ background: "linear-gradient(90deg, #fff4e0, #fff8ef)" }}
+      >
+        <div className="min-w-0">
+          <p className={LABEL} style={{ color: "#d97706" }}>
+            Package
+          </p>
+          <p className="font-bold text-sm md:text-base truncate" style={{ color: "#92400e" }}>
+            {booking.packageName || "—"}
+          </p>
+        </div>
+        <div className="shrink-0">
+          <StatusBadge status={booking.paymentStatus} />
+        </div>
+      </div>
+
+      <div className="px-4 md:px-5 py-3 md:py-4 grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3 md:gap-4">
+        <div>
+          <p className={LABEL} style={{ color: "#d97706" }}>
+            Amount Paid
+          </p>
+          <p className="font-bold text-sm md:text-base" style={{ color: "#ea580c" }}>
+            {booking.amount == null ? "—" : paidMoney(booking)}
+          </p>
+          {(booking.extraCharges || 0) > 0 && (
+            <p className="text-xs md:text-sm" style={{ color: "#b45309" }}>
+              (incl.{" "}
+              {paidMoney({ ...booking, amount: booking.extraCharges, chargedAmount: undefined })}{" "}
+              extra)
+            </p>
+          )}
+        </div>
+
+        <div>
+          <p className={LABEL} style={{ color: "#d97706" }}>
+            {booking.startDate ? "Seva Start Date" : "Duration"}
+          </p>
+          <p className="text-sm md:text-base" style={{ color: "#78350f" }}>
+            {booking.startDate
+              ? fmtDay(booking.startDate)
+              : `${booking.numberOfDays || "?"} day${booking.numberOfDays !== 1 ? "s" : ""}`}
+          </p>
+          {booking.startDate && (
+            <p className="text-xs md:text-sm" style={{ color: "#b45309" }}>
+              {booking.numberOfDays || "?"} day{booking.numberOfDays !== 1 ? "s" : ""}
+            </p>
+          )}
+        </div>
+
+        {detailsOpen && (
+          <>
+            <div>
+              <p className={LABEL} style={{ color: "#d97706" }}>
+                Booking ID
+              </p>
+              <p className="font-mono text-xs md:text-sm break-all" style={{ color: "#78350f" }}>
+                {booking.orderID || "—"}
+              </p>
+            </div>
+
+            {booking.name && (
+              <div>
+                <p className={LABEL} style={{ color: "#d97706" }}>
+                  Devotee
+                </p>
+                <p className="text-sm md:text-base" style={{ color: "#78350f" }}>
+                  {booking.name}
+                </p>
+                {booking.gotra && (
+                  <p className="text-xs md:text-sm" style={{ color: "#b45309" }}>
+                    Gotra: {booking.gotra}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div>
+              <p className={LABEL} style={{ color: "#d97706" }}>
+                Booked On
+              </p>
+              <p className="text-sm md:text-base" style={{ color: "#78350f" }}>
+                {fmtDay(booking.createdAt)}
+              </p>
+            </div>
+
+            {(booking.city || booking.state) && (
+              <div>
+                <p className={LABEL} style={{ color: "#d97706" }}>
+                  Prasad Delivery
+                </p>
+                <p className="text-sm md:text-base" style={{ color: "#78350f" }}>
+                  {[booking.city, booking.state].filter(Boolean).join(", ")}
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {detailsOpen && booking.familyMembers && booking.familyMembers.length > 0 && (
+        <div className="px-4 md:px-5 pb-3 md:pb-4">
+          <p className={LABEL} style={{ color: "#d97706" }}>
+            Family Members
+          </p>
+          <div className="flex flex-wrap gap-1.5 md:gap-2 mt-1">
+            {booking.familyMembers.map((m, i) =>
+              m.trim() ? (
+                <span
+                  key={i}
+                  className="text-xs md:text-sm px-2 py-0.5 rounded-full"
+                  style={{ background: "#fff4e0", border: "1px solid #fde9bb", color: "#b45309" }}
+                >
+                  {m}
+                </span>
+              ) : null,
+            )}
+          </div>
+        </div>
+      )}
+
+      {isSmallScreen && (
+        <div className="px-4 pb-3">
+          <DetailsToggle open={showDetails} onToggle={() => setShowDetails((v) => !v)} />
+        </div>
+      )}
+    </motion.div>
+  );
+};
+
 const BankeBihariBookings = () => {
+  const isSmallScreen = useMediaQuery("(max-width:600px)");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [mobile, setMobile] = useState("");
@@ -144,174 +317,12 @@ const BankeBihariBookings = () => {
       </h2>
 
       {bookings.map((booking, idx) => (
-        <motion.div
+        <BankeBihariBookingCard
           key={booking.orderID || idx}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: idx * 0.05 }}
-          className="rounded-2xl overflow-hidden"
-          style={{
-            background: "#fff",
-            border: "1px solid #f5d5a8",
-            boxShadow: "0 2px 16px rgba(200,100,0,0.06)",
-          }}
-        >
-          {/* Header */}
-          <div
-            className="flex items-center justify-between px-5 py-3"
-            style={{ background: "linear-gradient(90deg, #fff4e0, #fff8ef)" }}
-          >
-            <div>
-              <p
-                className="text-xs font-bold uppercase tracking-widest"
-                style={{ color: "#d97706" }}
-              >
-                Booking ID
-              </p>
-              <p
-                className="font-mono font-bold text-base"
-                style={{ color: "#92400e" }}
-              >
-                {booking.orderID || "—"}
-              </p>
-            </div>
-            <StatusBadge status={booking.paymentStatus} />
-          </div>
-
-          {/* Body */}
-          <div className="px-5 py-4 grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div>
-              <p
-                className="text-xs font-bold uppercase tracking-wider mb-0.5"
-                style={{ color: "#d97706" }}
-              >
-                Package
-              </p>
-              <p className="font-semibold text-base" style={{ color: "#1c0a00" }}>
-                {booking.packageName || "—"}
-              </p>
-              <p className="text-sm" style={{ color: "#b45309" }}>
-                {booking.numberOfDays || "?"} day
-                {booking.numberOfDays !== 1 ? "s" : ""}
-              </p>
-            </div>
-
-            <div>
-              <p
-                className="text-xs font-bold uppercase tracking-wider mb-0.5"
-                style={{ color: "#d97706" }}
-              >
-                Amount Paid
-              </p>
-              <p className="font-bold text-base" style={{ color: "#ea580c" }}>
-                {booking.amount == null ? "—" : paidMoney(booking)}
-              </p>
-              {(booking.extraCharges || 0) > 0 && (
-                <p className="text-sm" style={{ color: "#b45309" }}>
-                  (incl. {paidMoney({ ...booking, amount: booking.extraCharges, chargedAmount: undefined })} extra)
-                </p>
-              )}
-            </div>
-
-            <div>
-              <p
-                className="text-xs font-bold uppercase tracking-wider mb-0.5"
-                style={{ color: "#d97706" }}
-              >
-                Booked On
-              </p>
-              <p className="text-sm" style={{ color: "#78350f" }}>
-                {booking.createdAt
-                  ? new Date(booking.createdAt).toLocaleDateString("en-IN", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })
-                  : "—"}
-              </p>
-            </div>
-
-            {booking.name && (
-              <div>
-                <p
-                  className="text-xs font-bold uppercase tracking-wider mb-0.5"
-                  style={{ color: "#d97706" }}
-                >
-                  Devotee
-                </p>
-                <p className="text-base" style={{ color: "#78350f" }}>
-                  {booking.name}
-                </p>
-                {booking.gotra && (
-                  <p className="text-sm" style={{ color: "#b45309" }}>
-                    Gotra: {booking.gotra}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {booking.startDate && (
-              <div>
-                <p
-                  className="text-xs font-bold uppercase tracking-wider mb-0.5"
-                  style={{ color: "#d97706" }}
-                >
-                  Seva Start Date
-                </p>
-                <p className="text-base" style={{ color: "#78350f" }}>
-                  {new Date(booking.startDate).toLocaleDateString("en-IN", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </p>
-              </div>
-            )}
-
-            {(booking.city || booking.state) && (
-              <div>
-                <p
-                  className="text-xs font-bold uppercase tracking-wider mb-0.5"
-                  style={{ color: "#d97706" }}
-                >
-                  Prasad Delivery
-                </p>
-                <p className="text-base" style={{ color: "#78350f" }}>
-                  {[booking.city, booking.state].filter(Boolean).join(", ")}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Family Members */}
-          {booking.familyMembers && booking.familyMembers.length > 0 && (
-            <div className="px-5 pb-4">
-              <p
-                className="text-xs font-bold uppercase tracking-wider mb-1"
-                style={{ color: "#d97706" }}
-              >
-                Family Members
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {booking.familyMembers.map((m, i) =>
-                  m.trim() ? (
-                    <span
-                      key={i}
-                      className="text-sm px-2 py-0.5 rounded-full"
-                      style={{
-                        background: "#fff4e0",
-                        border: "1px solid #fde9bb",
-                        color: "#b45309",
-                      }}
-                    >
-                      {m}
-                    </span>
-                  ) : null
-                )}
-              </div>
-            </div>
-          )}
-        </motion.div>
+          booking={booking}
+          index={idx}
+          isSmallScreen={isSmallScreen}
+        />
       ))}
     </div>
   );

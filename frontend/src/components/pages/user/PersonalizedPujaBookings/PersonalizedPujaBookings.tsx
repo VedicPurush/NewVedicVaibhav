@@ -131,6 +131,7 @@ const PersonalisedPujaBookings = () => {
         {bookings.map((b, i) => (
           <Col key={b._id ?? `p-${i}`} xs={24} sm={24} md={24} lg={24} xl={24}>
             <PersonalizedBookingCard
+              isSmallScreen={isSmall}
               orderId={b.orderId ?? "—"}
               poojaName={b.problemName ?? "Personalized Puja"}
               mandirName={b.mandirName}

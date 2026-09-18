@@ -15,6 +15,8 @@ import {
 } from "antd";
 import { api } from "@/lib/api";
 
+import DetailsToggle from "../DetailsToggle";
+
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
 
@@ -33,6 +35,8 @@ interface Booking {
 }
 
 const MobileBookingCard: React.FC<{ booking: Booking }> = ({ booking }) => {
+  const [showDetails, setShowDetails] = useState(false);
+
   const getStatusTag = (status: string) => {
     let color = "orange";
     if (status === "confirmed") color = "green";
@@ -42,6 +46,13 @@ const MobileBookingCard: React.FC<{ booking: Booking }> = ({ booking }) => {
         {status.toUpperCase()}
       </Tag>
     );
+  };
+
+  const caption: React.CSSProperties = {
+    fontSize: "10.5px",
+    color: "#8c8c8c",
+    textTransform: "uppercase",
+    letterSpacing: "0.3px",
   };
 
   return (
@@ -55,131 +66,57 @@ const MobileBookingCard: React.FC<{ booking: Booking }> = ({ booking }) => {
         fontFamily: "Poppins, sans-serif",
       }}
     >
-      {/* Header with gradient */}
+      {/* Header — the devotee and status identify the booking; the order id is a
+          support reference and sits in the details with the rest. */}
       <div
         style={{
-          background: "linear-gradient(135deg, #173963 0%, #2b5876 100%)",
-          padding: "12px 16px",
+          background: "linear-gradient(135deg, #7A0F1F 0%, #C2410C 100%)",
+          padding: "10px 14px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          gap: "8px",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <span
-            style={{
-              fontSize: "10px",
-              color: "rgba(255,255,255,0.7)",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-            }}
-          >
-            Booking ID
-          </span>
-          <Text
-            copyable={{ text: booking.orderID }}
+        <div style={{ minWidth: 0 }}>
+          <div style={{ ...caption, color: "rgba(255,255,255,0.7)" }}>Devotee</div>
+          <div
             style={{
               color: "#fff",
               fontWeight: 600,
-              fontSize: "13px",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
+              fontSize: "14px",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
-            <span style={{ color: "#fff" }}>{booking.orderID}</span>
-          </Text>
+            {booking.name}
+          </div>
         </div>
-        <div>{getStatusTag(booking.status)}</div>
+        <div style={{ flexShrink: 0 }}>{getStatusTag(booking.status)}</div>
       </div>
 
-      {/* Body */}
-      <div
-        style={{
-          padding: "16px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px",
-        }}
-      >
-        {/* Devotee Name & Price */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                fontSize: "11px",
-                color: "#8c8c8c",
-                textTransform: "uppercase",
-              }}
-            >
-              Devotee Name
-            </div>
-            <div style={{ fontWeight: 600, fontSize: "15px", color: "#262626" }}>
-              {booking.name}
-            </div>
-            {booking.gotra && (
-              <div
-                style={{ fontSize: "12px", color: "#595959", marginTop: "2px" }}
-              >
-                Gotra: <span style={{ fontWeight: 500 }}>{booking.gotra}</span>
-              </div>
-            )}
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div
-              style={{
-                fontSize: "11px",
-                color: "#8c8c8c",
-                textTransform: "uppercase",
-              }}
-            >
-              Amount Paid
-            </div>
-            <div style={{ fontSize: "18px", fontWeight: 700, color: "#FF7722" }}>
-              {paidMoney(booking)}
-            </div>
+      <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: "10px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "8px" }}>
+          <div style={caption}>Amount Paid</div>
+          <div style={{ fontSize: "17px", fontWeight: 700, color: "#FF7722" }}>
+            {paidMoney(booking)}
           </div>
         </div>
 
-        {/* Selected Jyotirling */}
         <div>
-          <div
-            style={{
-              fontSize: "11px",
-              color: "#8c8c8c",
-              textTransform: "uppercase",
-              marginBottom: "4px",
-            }}
-          >
-            Selected Jyotirling
-          </div>
+          <div style={{ ...caption, marginBottom: "4px" }}>Selected Jyotirling</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
             {booking.selectedTemples.map((t) => (
-              <Tag color="blue" key={t.id} style={{ margin: 0, borderRadius: "4px" }}>
+              <Tag color="volcano" key={t.id} style={{ margin: 0, borderRadius: "4px" }}>
                 {t.nameEnglish}
               </Tag>
             ))}
           </div>
         </div>
 
-        {/* Chadhava Seva */}
         <div>
-          <div
-            style={{
-              fontSize: "11px",
-              color: "#8c8c8c",
-              textTransform: "uppercase",
-              marginBottom: "4px",
-            }}
-          >
-            Chadhava Seva
-          </div>
+          <div style={{ ...caption, marginBottom: "4px" }}>Chadhava Seva</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
             {booking.selectedOfferings.map((o) => (
               <Tag color="orange" key={o.id} style={{ margin: 0, borderRadius: "4px" }}>
@@ -189,53 +126,49 @@ const MobileBookingCard: React.FC<{ booking: Booking }> = ({ booking }) => {
           </div>
         </div>
 
-        {/* Footer info (Date & Txn ID) */}
-        <div
-          style={{
-            borderTop: "1px solid #f0f0f0",
-            paddingTop: "10px",
-            marginTop: "4px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "8px",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                fontSize: "10px",
-                color: "#8c8c8c",
-                textTransform: "uppercase",
-              }}
-            >
-              Booking Date
-            </div>
-            <div style={{ fontSize: "12px", fontWeight: 500, color: "#595959" }}>
-              {new Date(booking.bookingDate).toLocaleDateString()}
-            </div>
-          </div>
-          {booking.transactionID && (
-            <div style={{ textAlign: "right" }}>
-              <div
-                style={{
-                  fontSize: "10px",
-                  color: "#8c8c8c",
-                  textTransform: "uppercase",
-                }}
-              >
-                Transaction ID
-              </div>
+        <DetailsToggle open={showDetails} onToggle={() => setShowDetails((v) => !v)} />
+
+        {showDetails && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div>
+              <div style={caption}>Booking ID</div>
               <Text
-                copyable={{ text: booking.transactionID }}
-                style={{ fontSize: "12px", fontWeight: 500, color: "#595959" }}
+                copyable={{ text: booking.orderID }}
+                style={{ fontSize: "12px", fontWeight: 500, color: "#595959", wordBreak: "break-all" }}
               >
-                <span style={{ color: "#595959" }}>{booking.transactionID}</span>
+                <span style={{ color: "#595959" }}>{booking.orderID}</span>
               </Text>
             </div>
-          )}
-        </div>
+
+            {booking.gotra && (
+              <div>
+                <div style={caption}>Gotra</div>
+                <div style={{ fontSize: "12px", fontWeight: 500, color: "#595959", wordBreak: "break-all" }}>
+                  {booking.gotra}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <div style={caption}>Booking Date</div>
+              <div style={{ fontSize: "12px", fontWeight: 500, color: "#595959", wordBreak: "break-all" }}>
+                {new Date(booking.bookingDate).toLocaleDateString()}
+              </div>
+            </div>
+
+            {booking.transactionID && (
+              <div>
+                <div style={caption}>Transaction ID</div>
+                <Text
+                  copyable={{ text: booking.transactionID }}
+                  style={{ fontSize: "12px", fontWeight: 500, color: "#595959", wordBreak: "break-all" }}
+                >
+                  <span style={{ color: "#595959" }}>{booking.transactionID}</span>
+                </Text>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -314,7 +247,7 @@ const JyotirlingChadhavaBookings: React.FC = () => {
       render: (_: any, record: Booking) => (
         <>
           {record.selectedTemples.map((t) => (
-            <Tag color="blue" key={t.id} style={{ marginBottom: "4px" }}>
+            <Tag color="volcano" key={t.id} style={{ marginBottom: "4px" }}>
               {t.nameEnglish}
             </Tag>
           ))}
@@ -384,7 +317,7 @@ const JyotirlingChadhavaBookings: React.FC = () => {
   return (
     <Card
       title={
-        <Title level={isMobile ? 4 : 3} style={{ margin: 0, color: "#173963" }}>
+        <Title level={isMobile ? 4 : 3} style={{ margin: 0, color: "#7A0F1F" }}>
           Jyotirling Chadhava Bookings
         </Title>
       }

@@ -25,6 +25,9 @@ export interface IPitruPujaBooking extends Document, IInternationalFields {
   paymentStatus: boolean;
   transactionID?: string;
   paymentDate?: Date | null;
+  /** Supplied by `timestamps: true` below; declared so readers can use them. */
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const pitruPujaBookingSchema = new Schema<IPitruPujaBooking>(

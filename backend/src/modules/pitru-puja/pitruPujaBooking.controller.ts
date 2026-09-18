@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import PitruPujaBooking from "./pitruPujaBooking.model";
+import { phoneDigits } from "./pitruPujaBooking.profile";
 import PendingPitruPujaBooking from "./pendingPitruPujaBooking.model";
 import PitruPuja from "./pitruPuja.model";
 import { razorpayKeyId, verifyPaymentSignature, verifyWebhookSignature } from "../../lib/razorpay";
@@ -48,7 +49,10 @@ export const createPitruPujaBooking = async (req: Request, res: Response): Promi
 
   if (!pujaId || typeof pujaId !== "string") throw ApiError.badRequest("Missing pujaId.");
   if (!packageLabel || typeof packageLabel !== "string") throw ApiError.badRequest("Missing packageLabel.");
-  if (!whatsappNumber || String(whatsappNumber).trim().length < 6) {
+  // Stored as digits only. The profile's puja tab finds a devotee's bookings by
+  // matching their phone number, and "98765 43210" never matches "9876543210".
+  const whatsappDigits = phoneDigits(whatsappNumber);
+  if (whatsappDigits.length < 10) {
     throw ApiError.badRequest("A valid WhatsApp number is required.");
   }
   if (!kartaName || !String(kartaName).trim()) throw ApiError.badRequest("Karta's name is required.");
@@ -88,8 +92,8 @@ export const createPitruPujaBooking = async (req: Request, res: Response): Promi
     originalAmount: pkg.price,
     promoCode: promo?.promoName,
     discountAmount: promo?.discountAmount ?? 0,
-    whatsappNumber: String(whatsappNumber).trim(),
-    callingNumber: callingNumber ? String(callingNumber).trim() : undefined,
+    whatsappNumber: whatsappDigits,
+    callingNumber: callingNumber ? phoneDigits(callingNumber) || undefined : undefined,
     kartaName: String(kartaName).trim(),
     kartaGotra: String(kartaGotra).trim(),
     ancestorNames: (ancestorNames as unknown[]).map((n) => String(n).trim()),

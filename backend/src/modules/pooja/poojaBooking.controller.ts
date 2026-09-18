@@ -5,6 +5,7 @@ import { Parser } from "@json2csv/plainjs";
 import PoojaBooking, { type IPoojaBooking } from "./poojaBooking.model";
 import NewPooja from "./newPooja.model";
 import PendingBooking, { type IPendingBooking } from "./pendingPoojaBooking.model";
+import { findPitruPujaBookingsByMobile } from "../pitru-puja/pitruPujaBooking.profile";
 import { env } from "../../config/env";
 import { logger } from "../../lib/logger";
 import { razorpayKeyId, verifyPaymentSignature } from "../../lib/razorpay";
@@ -301,6 +302,11 @@ export const fetchPoojaByUserId = async (req: Request, res: Response) => {
   return res.status(200).json({ poojaBooked });
 };
 
+/**
+ * Serves the profile's "Pooja Bookings" tab. Identity here is the phone number
+ * in the path — not the JWT — which is why pitru puja bookings, stored in their
+ * own collection keyed by WhatsApp number, can be folded in on the same key.
+ */
 export const fetchPoojaByMobile = async (req: Request, res: Response) => {
   const { mobile } = req.params;
 
@@ -331,6 +337,10 @@ export const fetchPoojaByMobile = async (req: Request, res: Response) => {
     ],
   }).lean();
 
+  // Pitru puja has its own collection and field names; the module maps its rows
+  // onto this response's shape so the tab renders them with the same card.
+  const pitruBookings = await findPitruPujaBookingsByMobile(last10);
+
   const pendingBookings = pendingDocs.map((doc) => {
     const details = doc.bookingDetails ?? {};
     return {
@@ -348,6 +358,7 @@ export const fetchPoojaByMobile = async (req: Request, res: Response) => {
   const combined = [
     ...poojaBooked.map((b) => ({ ...b.toObject(), status: "confirmed" })),
     ...pendingBookings,
+    ...pitruBookings,
   ];
 
   if (!combined.length) {
