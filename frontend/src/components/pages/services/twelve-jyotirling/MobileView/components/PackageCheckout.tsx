@@ -348,7 +348,7 @@ const PackageCheckout: React.FC = () => {
       return;
     }
     const code = couponInput.trim().toUpperCase();
-    if (code === "VVJATIN@100" || code === "JATIN@100") {
+    if (code === "VVJATIN@100" || code === "TYAGI@19") {
       setAppliedCoupon({ code: couponInput.trim(), discount: 0 });
       setCouponError("");
     } else {

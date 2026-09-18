@@ -107,7 +107,7 @@ const coupons: Coupon[] = [
   { code: 'WELCOME10', visible: true, expires: '2025-12-31', minCartValue: 499, discount: 50 },
   { code: 'Vedic@1000', visible: true, expires: '2025-12-31', minCartValue: 1251, discount: 110 },
   { code: 'Vedic@2000', visible: true, expires: '2025-12-31', minCartValue: 2101, discount: 251 },
-  { code: 'Jatin@100', visible: false, expires: '2025-12-31', minCartValue: 0, discount: 999999 },
+  { code: 'Tyagi@19', visible: false, expires: '2025-12-31', minCartValue: 0, discount: 999999 },
   { code: 'THANKYOU6', visible: false, expires: '2025-12-31', minCartValue: 251, discount: 50 },
 ];
 
@@ -520,7 +520,7 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
 
   // Discounted total after coupon (for checkout)
   const discountedTotalPrice = appliedCoupon
-    ? appliedCoupon.code.toUpperCase() === "JATIN@100" || appliedCoupon.discount === 999999
+    ? appliedCoupon.code.toUpperCase() === "TYAGI@19" || appliedCoupon.discount === 999999
       ? 1
       : Math.max(finalTotalPrice - appliedCoupon.discount, 1)
     : finalTotalPrice;

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 
 /**
@@ -59,20 +60,41 @@ const FeaturedSevaBanners = () => (
         mb-3, so a matching top margin here doubled the gap — the banner sat
         noticeably lower than every other section boundary on the page. */}
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5 w-full mb-3 md:mb-4">
-      {BANNERS.map((banner) => (
+      {BANNERS.map((banner, index) => (
         <Link
           key={banner.href}
           href={banner.href}
           aria-label={banner.label}
-          className="group block w-full overflow-hidden rounded-xl md:rounded-2xl shadow-md hover:shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 transition-shadow duration-300"
+          className="group relative block w-full overflow-hidden rounded-xl md:rounded-2xl shadow-md hover:shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 transition-shadow duration-300"
           style={{ aspectRatio: BANNER_ASPECT }}
         >
-          <img
+          {/* Measured: on a 412x823 phone this first banner IS the Largest
+              Contentful Paint element. The banners stack on mobile, so at
+              412px wide by 16/7 each is ~412x180 = 74,000px² of visible area —
+              larger than the hero strip above it (~53,000px²), and still inside
+              the fold. Chrome picks the largest, so the hero being fast did not
+              matter; this image decided the score.
+
+              It was a plain <img loading="lazy"> pointing at the full-size
+              original (65KB, unresized, one per banner). Lazy meant the browser
+              would not even queue it until layout, and it then landed at 4.8s on
+              a throttled mobile connection — that WAS the 6.1s LCP.
+
+              Two changes: next/image resizes it to the slot and negotiates
+              AVIF/WebP, and the first one loads eagerly at high priority instead
+              of lazily. The second banner stays lazy — on mobile it is a full
+              banner-height below this one, and on desktop they sit side by side
+              where this one has already warmed the connection. */}
+          <Image
             src={banner.src}
             alt={banner.alt}
-            loading="lazy"
-            decoding="async"
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            fill
+            // Side by side from md (minus the 3% gutters and the gap), stacked
+            // and full-width below it.
+            sizes="(min-width: 768px) 45vw, 94vw"
+            priority={index === 0}
+            loading={index === 0 ? "eager" : "lazy"}
+            className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
           />
         </Link>
       ))}

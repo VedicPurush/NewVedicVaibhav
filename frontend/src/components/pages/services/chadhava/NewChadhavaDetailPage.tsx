@@ -7,13 +7,14 @@ import Lock from '@mui/icons-material/Lock';
 import Close from '@mui/icons-material/Close';
 import ArrowForwardIos from '@mui/icons-material/ArrowForwardIos';
 import VerifiedIcon from "@mui/icons-material/Verified";
-import React, { useEffect, useMemo, useRef, useState, Fragment } from "react";
+import React, { useEffect, useMemo, useRef, useState, Fragment, lazy, memo } from "react";
+import Image from "next/image";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import confetti from "canvas-confetti";
 
 import Layout from "@/components/layout/Layout";
 import NewChadhavaContent from "./NewChadhavaContent";
 import Loadinggif from "@/components/shared/LoadingGif";
+import LazySection from "@/components/widgets/home/LazySection";
 import { useNewChadhavaDetailQuery } from "@/hooks/queries/useNewChadhavaDetailQuery";
 import { useMandirDetailQuery } from "@/hooks/queries/useMandirQueries";
 import { gtag } from "@/lib/gtag";
@@ -21,7 +22,10 @@ import { useMoney, shipsPrasad, toInr } from "@/lib/currency";
 import { captureVvUtm } from "@/lib/utm";
 import { buildDetailSlug, extractIdFromSlug } from "@/lib/slug";
 import { useMusic } from "@/components/widgets/music/MusicContext";
-import ReviewPuja from "@/components/widgets/puja/ReviewPuja";
+
+// Reviews sit at the very bottom and pull in antd's Carousel (react-slick) and
+// framer-motion — kept out of the initial bundle and mounted near the viewport.
+const ReviewPuja = lazy(() => import("@/components/widgets/puja/ReviewPuja"));
 
 // --- Meta Pixel safe tracker (queues until fbq is ready) ---
 const isFbq = (fn: unknown): fn is (...args: any[]) => void =>
@@ -228,6 +232,15 @@ const MandirDetailsSection = ({ mandir }: { mandir: any }) => {
     const m = useMemo(() => mandir?.mandir ?? mandir, [mandir]);
 
     const imageUrl = useMemo(() => getMandirImageUrl(m), [m]);
+    const fallbackUrl =
+        typeof m?.mandirAppImage === "string"
+            ? m.mandirAppImage
+            : m?.mandirAppImage?.location || m?.mandirAppImage?.url || "";
+
+    // Tracked in state (rather than rewriting e.currentTarget.src) so the
+    // fallback also works through next/image.
+    const [imgSrc, setImgSrc] = useState(imageUrl);
+    useEffect(() => setImgSrc(imageUrl), [imageUrl]);
 
     if (!m) return null;
 
@@ -255,25 +268,18 @@ const MandirDetailsSection = ({ mandir }: { mandir: any }) => {
             >
                 <div className="px-4 pb-4 pt-0">
                     {/* Image */}
-                    {imageUrl ? (
-                        <div className="mb-4 overflow-hidden rounded-xl">
-                            <img
-                                src={imageUrl}
+                    {imgSrc ? (
+                        // Resized by next/image: the source is a ~1.6MB JPEG for a 192px-tall box.
+                        <div className="relative mb-4 h-48 overflow-hidden rounded-xl">
+                            <Image
+                                src={imgSrc}
                                 alt={m.nameEnglish || "Mandir"}
-                                className="h-48 w-full object-cover"
-                                loading="lazy"
-                                onError={(e) => {
-                                    const fallback =
-                                        typeof m?.mandirAppImage === "string"
-                                            ? m.mandirAppImage
-                                            : m?.mandirAppImage?.location || m?.mandirAppImage?.url || "";
-
-                                    if (fallback && e.currentTarget.src !== fallback) {
-                                        e.currentTarget.src = fallback;
-                                    } else {
-                                        e.currentTarget.style.display = "none";
-                                    }
-                                }}
+                                fill
+                                sizes="(max-width: 430px) 90vw, 400px"
+                                className="object-cover"
+                                onError={() =>
+                                    setImgSrc(fallbackUrl && imgSrc !== fallbackUrl ? fallbackUrl : "")
+                                }
                             />
                         </div>
                     ) : null}
@@ -313,6 +319,129 @@ const MandirDetailsSection = ({ mandir }: { mandir: any }) => {
         </section>
     );
 };
+
+/**
+ * Hero banner carousel.
+ *
+ * Owns its own slide state: the 3.5s autoplay used to live in the page
+ * component, so every tick re-rendered the whole ~1900-line page tree.
+ *
+ * The first slide is the LCP element, so it is fetched eagerly at high
+ * priority and served through next/image (resized, AVIF/WebP) instead of the
+ * full-size original with loading="lazy". Later slides mount only once they are
+ * next up, so their bytes stay off the initial load.
+ */
+const BannerCarousel = memo(({ banners, rating, reviewCount }: {
+    banners: Banner[];
+    rating: number;
+    reviewCount: number;
+}) => {
+    const [activeBanner, setActiveBanner] = useState(0);
+    const [mounted, setMounted] = useState<Set<number>>(() => new Set([0, 1]));
+
+    useEffect(() => {
+        if (banners.length < 2) return;
+        const timer = window.setInterval(() => {
+            setActiveBanner((p) => (p + 1) % banners.length);
+        }, 3500);
+        return () => window.clearInterval(timer);
+    }, [banners.length]);
+
+    // Pre-mount the slide after the active one so it has loaded before it shows.
+    useEffect(() => {
+        if (!banners.length) return;
+        const upcoming = [activeBanner, (activeBanner + 1) % banners.length];
+        setMounted((prev) => (upcoming.every((i) => prev.has(i)) ? prev : new Set([...prev, ...upcoming])));
+    }, [activeBanner, banners.length]);
+
+    // Swipe Handlers
+    const [touchStart, setTouchStart] = useState<number | null>(null);
+    const [touchEnd, setTouchEnd] = useState<number | null>(null);
+    const minSwipeDistance = 50;
+
+    const onTouchStart = (e: React.TouchEvent) => {
+        setTouchEnd(null);
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const onTouchMove = (e: React.TouchEvent) => {
+        setTouchEnd(e.targetTouches[0].clientX);
+    };
+
+    const onTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > minSwipeDistance;
+        const isRightSwipe = distance < -minSwipeDistance;
+
+        if (isLeftSwipe) {
+            setActiveBanner((prev) => (prev + 1) % banners.length);
+        }
+        if (isRightSwipe) {
+            setActiveBanner((prev) => (prev - 1 + banners.length) % banners.length);
+        }
+    };
+
+    return (
+        <section className="px-3 pt-6">
+            <div
+                className="relative overflow-hidden rounded-[18px] bg-black shadow-[0_8px_22px_rgba(0,0,0,0.08)]"
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+            >
+                {banners.map((b, idx) => (
+                    <div
+                        key={b.id}
+                        className={[
+                            // Space is reserved before the image arrives: chadhava banners
+                            // are uploaded at 50:27 (500x270, 750x405, 1250x675…). Sizing
+                            // from the image itself let the whole page below jump down
+                            // once it loaded (CLS 0.21). An off-ratio upload letterboxes
+                            // on the black background instead of shifting the layout.
+                            "aspect-[50/27] transition-opacity duration-500 will-change-opacity",
+                            idx === activeBanner ? "relative opacity-100" : "absolute inset-0 opacity-0",
+                        ].join(" ")}
+                        aria-hidden={idx !== activeBanner}
+                    >
+                        {b.image && (idx === activeBanner || mounted.has(idx)) ? (
+                            <Image
+                                src={b.image}
+                                alt="Chadhava"
+                                fill
+                                sizes="(max-width: 430px) 100vw, 430px"
+                                priority={idx === 0}
+                                className="object-contain"
+                            />
+                        ) : null}
+                        {/* rating (left side) */}
+                        <div className="absolute bottom-2 left-2 z-[3] inline-flex items-center gap-1 rounded-full border border-black/5 bg-white/90 px-2 py-1">
+                            <span className="text-[14px] leading-none text-amber-500">★</span>
+                            <span className="text-[13px] font-extrabold">{rating.toFixed(1)}</span>
+                            <span className="text-[10px] text-gray-500">({reviewCount})</span>
+                        </div>
+                    </div>
+                ))}
+                {/* dots (inside banner) */}
+                <div className="absolute bottom-3 left-1/2 z-[4] flex -translate-x-1/2 items-center justify-center gap-2">
+                    {banners.map((_, i) => (
+                        <button
+                            key={i}
+                            onClick={() => setActiveBanner(i)}
+                            aria-label={`Banner ${i + 1}`}
+                            className={[
+                                "h-2 rounded-full transition-all",
+                                i === activeBanner ? "w-5 bg-white" : "w-2 bg-white/60",
+                            ].join(" ")}
+                        />
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
+});
+
+BannerCarousel.displayName = "BannerCarousel";
 
 /* ------------------------------ API DATA START ------------------------------ */
 const NewChadhavaDetailContent = () => {
@@ -570,7 +699,6 @@ const NewChadhavaDetailContent = () => {
     const chadhavaDetailsText = parseQuillDescription(apiData?.description);
 
     /* ------------------------------ STATE ------------------------------ */
-    const [activeBanner, setActiveBanner] = useState(0);
     const [detailsOpen, setDetailsOpen] = useState(true);
 
     const [selectedSingles, setSelectedSingles] = useState<Record<string, number>>(
@@ -592,7 +720,11 @@ const NewChadhavaDetailContent = () => {
     // Scroll direction hint: 'down' when near top, 'up' when scrolled down, 'none' at very bottom
     const [scrollDir, setScrollDir] = useState<'down' | 'up' | 'none'>('down');
     useEffect(() => {
-        const onScroll = () => {
+        // Coalesced to one layout read per frame — reading scrollHeight on every
+        // scroll event forced a synchronous reflow each time.
+        let frame = 0;
+        const update = () => {
+            frame = 0;
             const scrollY = window.scrollY;
             const maxScroll = document.body.scrollHeight - window.innerHeight;
             if (maxScroll <= 0) { setScrollDir('none'); return; }
@@ -600,9 +732,15 @@ const NewChadhavaDetailContent = () => {
             if (pct > 0.82) setScrollDir('up');        // scrolled past 12% — show up arrow
             else setScrollDir('down');                  // still near top — show down arrow
         };
+        const onScroll = () => {
+            if (!frame) frame = requestAnimationFrame(update);
+        };
         window.addEventListener('scroll', onScroll, { passive: true });
         onScroll();
-        return () => window.removeEventListener('scroll', onScroll);
+        return () => {
+            window.removeEventListener('scroll', onScroll);
+            if (frame) cancelAnimationFrame(frame);
+        };
     }, []);
 
     const totalAmount = useMemo(() => {
@@ -684,46 +822,7 @@ const NewChadhavaDetailContent = () => {
         return isInactive || isExpired;
     }, [apiData, targetDate]);
 
-    const timerRef = useRef<number | null>(null);
-
-    useEffect(() => {
-        timerRef.current = window.setInterval(() => {
-            setActiveBanner((p) => (p + 1) % banners.length);
-        }, 3500);
-        return () => {
-            if (timerRef.current) window.clearInterval(timerRef.current);
-        };
-    }, [banners.length]);
-
     /* ------------------------------ HANDLERS ------------------------------ */
-    // Swipe Handlers
-    const [touchStart, setTouchStart] = useState<number | null>(null);
-    const [touchEnd, setTouchEnd] = useState<number | null>(null);
-    const minSwipeDistance = 50;
-
-    const onTouchStart = (e: React.TouchEvent) => {
-        setTouchEnd(null);
-        setTouchStart(e.targetTouches[0].clientX);
-    };
-
-    const onTouchMove = (e: React.TouchEvent) => {
-        setTouchEnd(e.targetTouches[0].clientX);
-    };
-
-    const onTouchEnd = () => {
-        if (!touchStart || !touchEnd) return;
-        const distance = touchStart - touchEnd;
-        const isLeftSwipe = distance > minSwipeDistance;
-        const isRightSwipe = distance < -minSwipeDistance;
-
-        if (isLeftSwipe) {
-            setActiveBanner((prev) => (prev + 1) % banners.length);
-        }
-        if (isRightSwipe) {
-            setActiveBanner((prev) => (prev - 1 + banners.length) % banners.length);
-        }
-    };
-
     const handleParticipate = () => {
         // Expiry Check
         if (isEventEnded) {
@@ -995,13 +1094,15 @@ const NewChadhavaDetailContent = () => {
         setGiftSelected((p) => ({ ...p, [id]: isSelecting }));
 
         if (isSelecting) {
-            // Confetti effect
-            confetti({
-                particleCount: 150,
-                spread: 70,
-                origin: { y: 0.6 },
-                zIndex: 9999,
-            });
+            // Confetti effect — loaded on first claim, not with the page
+            void import("canvas-confetti").then(({ default: confetti }) =>
+                confetti({
+                    particleCount: 150,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    zIndex: 9999,
+                })
+            );
 
             // Show success popup
             const gift = giftTiers.find(g => g.id === id);
@@ -1052,8 +1153,8 @@ const NewChadhavaDetailContent = () => {
   100% { transform: translate3d(0,0,0); }
 }
 @keyframes pop {
-  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(202, 53, 0, 0.2)); }
-  50% { transform: scale(1.05); filter: drop-shadow(0 0 8px rgba(202, 53, 0, 0.6)); }
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 @keyframes slideDown {
   0% { opacity: 0; transform: translate(-50%, -100%); }
@@ -1113,47 +1214,7 @@ const NewChadhavaDetailContent = () => {
             {/* mobile shell */}
             <div className="mx-auto  max-w-[430px]">
                 {/* ---------------- Banner ---------------- */}
-                <section className="px-3 pt-6">
-                    <div
-                        className="relative overflow-hidden rounded-[18px] bg-black shadow-[0_8px_22px_rgba(0,0,0,0.08)]"
-                        onTouchStart={onTouchStart}
-                        onTouchMove={onTouchMove}
-                        onTouchEnd={onTouchEnd}
-                    >
-                        {banners.map((b, idx) => (
-                            <div
-                                key={b.id}
-                                className={[
-                                    "transition-opacity duration-500 will-change-opacity",
-                                    idx === activeBanner ? "relative opacity-100" : "absolute inset-0 opacity-0",
-                                ].join(" ")}
-                                aria-hidden={idx !== activeBanner}
-                            >
-                                <img loading="lazy" src={b.image} alt="Chadhava" className="w-full h-auto object-contain" />
-                                {/* rating (left side) */}
-                                <div className="absolute bottom-2 left-2 z-[3] inline-flex items-center gap-1 rounded-full border border-black/5 bg-white/90 px-2 py-1">
-                                    <span className="text-[14px] leading-none text-amber-500">★</span>
-                                    <span className="text-[13px] font-extrabold">{rating.toFixed(1)}</span>
-                                    <span className="text-[10px] text-gray-500">({reviewCount})</span>
-                                </div>
-                            </div>
-                        ))}
-                        {/* dots (inside banner) */}
-                        <div className="absolute bottom-3 left-1/2 z-[4] flex -translate-x-1/2 items-center justify-center gap-2">
-                            {banners.map((_, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => setActiveBanner(i)}
-                                    aria-label={`Banner ${i + 1}`}
-                                    className={[
-                                        "h-2 rounded-full transition-all",
-                                        i === activeBanner ? "w-5 bg-white" : "w-2 bg-white/60",
-                                    ].join(" ")}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                </section>
+                <BannerCarousel banners={banners} rating={rating} reviewCount={reviewCount} />
 
                 {/* ---------------- Title + share ---------------- */}
                 <section className="mx-3 mt-3 ">
@@ -1183,7 +1244,9 @@ const NewChadhavaDetailContent = () => {
                     {/* Featured On Text */}
                     <div className=" text-center">
                         <span
-                            style={{ animation: "pop 2s ease-in-out infinite" }}
+                            // Transform-only animation stays on the compositor; the glow used to be
+                            // an animated filter, which repainted every frame on the main thread.
+                            style={{ animation: "pop 2s ease-in-out infinite", boxShadow: "0 0 6px rgba(202, 53, 0, 0.35)" }}
                             className="inline-block rounded-full bg-gradient-to-r from-orange-50 to-orange-100 px-4 py-1 text-[8px] font-extrabold tracking-wide text-[#CA3500] ring-1 ring-[#CA3500]/20"
                         >
                             Featured on 200+ News Portals
@@ -1268,8 +1331,8 @@ const NewChadhavaDetailContent = () => {
                                             ].join(" ")}
                                         >
                                             <div className="flex flex-1 gap-3 p-3">
-                                                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-black/10 bg-gray-100">
-                                                    <img src={g.image} alt={g.title} className="h-full w-full object-cover" loading="lazy" />
+                                                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-black/10 bg-gray-100">
+                                                    <Image src={g.image} alt={g.title} fill sizes="48px" className="object-cover" />
                                                 </div>
                                                 <div className="min-w-0 flex-1 flex flex-col">
                                                     <div className="leading-tight">
@@ -1344,10 +1407,16 @@ const NewChadhavaDetailContent = () => {
 
                                                         <div key={id} className="w-[118px] shrink-0" onClick={() => setSelectedItemForModal({ ...it, type: 'single', id })}>
                                                             <div className="relative overflow-hidden rounded-xl bg-gray-100 aspect-square">
-                                                                <div
-                                                                    className="h-full w-full bg-cover bg-center"
-                                                                    style={{ backgroundImage: `url(${image})` }}
-                                                                />
+                                                                {/* Was a CSS background of the full-size original for a 118px tile. */}
+                                                                {image ? (
+                                                                    <Image
+                                                                        src={image}
+                                                                        alt={it.itemName || "Chadhava item"}
+                                                                        fill
+                                                                        sizes="118px"
+                                                                        className="object-cover object-center"
+                                                                    />
+                                                                ) : null}
 
                                                                 {/* ADD / qty button on image */}
                                                                 {qty <= 0 ? (
@@ -1418,10 +1487,17 @@ const NewChadhavaDetailContent = () => {
 
                                                     {/* wide image */}
                                                     <div className="px-3">
-                                                        <div
-                                                            className="h-32 w-full rounded-xl bg-cover bg-center shadow-sm"
-                                                            style={{ backgroundImage: `url(${c.itemImage?.location || ""})` }}
-                                                        />
+                                                        <div className="relative h-32 w-full overflow-hidden rounded-xl shadow-sm">
+                                                            {c.itemImage?.location ? (
+                                                                <Image
+                                                                    src={c.itemImage.location}
+                                                                    alt={c.itemName || "Chadhava combo"}
+                                                                    fill
+                                                                    sizes="(max-width: 430px) 90vw, 400px"
+                                                                    className="object-cover object-center"
+                                                                />
+                                                            ) : null}
+                                                        </div>
                                                     </div>
 
                                                     {/* title + price + add */}
@@ -1525,7 +1601,9 @@ const NewChadhavaDetailContent = () => {
 
                 {/* ---------------- Why Perform & What You Get ---------------- */}
                 <NewChadhavaContent />
-                <ReviewPuja />
+                <LazySection placeholderHeight={600} name="chadhava-reviews">
+                    <ReviewPuja />
+                </LazySection>
                 {/* Spacer to separate content from footer bar when at bottom */}
                 <div className="pb-0"></div>
 

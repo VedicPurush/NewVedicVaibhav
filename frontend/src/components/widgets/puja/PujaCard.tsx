@@ -68,6 +68,8 @@ interface PujaCardProps {
   price: number;
   mandirName: string; // New prop for Mandir Name
   mandirDate: any;
+  /** Overrides the default select-package route, for pujas with their own landing page. */
+  href?: string;
 }
 
 const PujaCard: React.FC<PujaCardProps> = ({
@@ -79,7 +81,7 @@ const PujaCard: React.FC<PujaCardProps> = ({
   price,
   mandirName,
   mandirDate,
-
+  href,
 }) => {
   /** Prices display in the devotee's own currency; the India list price is the
    *  input and the server owns the markup. See lib/currency.ts. */
@@ -92,14 +94,15 @@ const PujaCard: React.FC<PujaCardProps> = ({
 
   const prefetchDetail = useCallback(() => {
     const pujaId = String(id);
-    if (!pujaId) return;
+    // Custom-route pujas are not in the pooja collections, so there is nothing to prefetch.
+    if (!pujaId || href) return;
 
     queryClient.prefetchQuery({
       queryKey: PUJA_KEYS.activeDetail(pujaId),
       queryFn: () => fetchActivePoojaById(pujaId),
       staleTime: 30 * 60 * 1000, // keep aligned with detail hook
     });
-  }, [id, queryClient]);
+  }, [id, href, queryClient]);
 
   return (
     <div style={{ width: "100%" }}>
@@ -119,7 +122,7 @@ const PujaCard: React.FC<PujaCardProps> = ({
             onMouseEnter={prefetchDetail}
             onFocus={prefetchDetail}
             onTouchStart={prefetchDetail}
-            onClick={() => router.push(`/services/puja/${buildDetailSlug(Title, id)}/select-package`)}
+            onClick={() => router.push(href ?? `/services/puja/${buildDetailSlug(Title, id)}/select-package`)}
           >
             <div style={{ position: "relative", }}>
               <img
@@ -127,9 +130,13 @@ const PujaCard: React.FC<PujaCardProps> = ({
                 style={{
                   borderTopLeftRadius: "15px",
                   borderTopRightRadius: "15px",
-                  width: "100%", // Ensure the image covers the width
-                  // height: "auto", // Maintain aspect ratio
-                  // minHeight:'20vh'
+                  display: "block",
+                  width: "100%",
+                  // Puja card images are uploaded at 1.85:1. Fixing the box keeps
+                  // any other shape (e.g. a wider banner) from changing the card's
+                  // height, and cover crops it instead of stretching it.
+                  aspectRatio: "1.85 / 1",
+                  objectFit: "cover",
                 }}
                 alt={Title}
                 loading="eager"

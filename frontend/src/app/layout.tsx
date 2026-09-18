@@ -176,7 +176,7 @@ function doGTranslate(lang_pair) {
 }`;
 
 const FONTS_HREF =
-  "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600&family=Open+Sans:wght@400;500;600&family=Montserrat:wght@400;500;600&family=Baloo+2:wght@400;500;600;700;800&family=Marcellus&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap";
+  "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600&family=Open+Sans:wght@400;500;600&family=Montserrat:wght@400;500;600&family=Baloo+2:wght@400;500;600;700;800&family=Marcellus&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=Kurale&display=swap";
 
 /**
  * Creates the font stylesheet link and flips it from media="print" (parsed, not
@@ -220,6 +220,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             period before that happens. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* Banner, temple and card imagery all come from this one CDN, and the
+            desktop hero <img> references it directly — so the TLS handshake is
+            on the critical path to Largest Contentful Paint. Opening it here
+            overlaps the handshake with HTML parsing instead of paying for it
+            after the image URL is discovered. */}
+        <link
+          rel="preconnect"
+          href="https://vedic-vaibhav.blr1.cdn.digitaloceanspaces.com"
+          crossOrigin="anonymous"
+        />
         <link rel="preload" as="style" href={FONTS_HREF} />
         {/* The stylesheet <link> itself is injected by this script, not rendered
             by React — see FONT_ACTIVATION_SCRIPT for why. */}
@@ -227,20 +237,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <noscript>
           <link rel="stylesheet" href={FONTS_HREF} />
         </noscript>
-        {/* Site-wide background artwork (see globals.css). Preloaded per breakpoint so
-            the first paint isn't the flat cream fallback; the browser fetches only one. */}
-        <link
-          rel="preload"
-          as="image"
-          href="/backgrounds/mobile_bg.webp"
-          media="(max-width: 767px)"
-        />
-        <link
-          rel="preload"
-          as="image"
-          href="/backgrounds/desktop_bg.webp"
-          media="(min-width: 768px)"
-        />
+        {/* Site-wide background artwork (see globals.css) is deliberately NOT
+            preloaded.
+
+            It used to be, one <link> per breakpoint. But a preload is a request
+            for *critical* bandwidth, and on a phone this artwork is 97KB
+            (mobile_bg.webp) fetched from the document <head> — ahead of the hero
+            banner, which is the LCP element. On Lighthouse's throttled mobile
+            connection that is roughly half a second during which the one image
+            the score depends on is not downloading, spent on a decorative layer
+            sitting at z-index -1 behind every pixel of content.
+
+            Dropping the preload does not drop the image: the body::before rule
+            in globals.css still fetches it, now at the browser's own (lower)
+            priority, behind the content that the user is actually waiting for.
+            --site-bg-fallback paints the same cream as the centre of both files
+            in the meantime, so the gap reads as the intended background rather
+            than as a missing one. */}
         {allSchemas.map((schema, i) => (
           <script
             key={i}

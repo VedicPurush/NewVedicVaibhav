@@ -53,26 +53,32 @@ const services = [
 ];
 
 // ─── Social icons ─────────────────────────────────────────────────────────────
+// Icon-only links: `label` is their accessible name. Without it screen readers
+// and AI agents see an empty link (Lighthouse: "Links must have discernible text").
 const socialIcons = [
   {
     icon: WhatsApp,
     href: "https://wa.me/919056955310?text=Hi%20I%20want%20to%20connect%20with%20Vedic%20Vaibhav%20team",
     color: "text-green-500",
+    label: "Chat with Vedic Vaibhav on WhatsApp",
   },
   {
     icon: Twitter,
     href: "https://x.com/Vedic_Vaibhav?t=h3_rWC2cMmRYZeNhziG-YA",
     color: "text-blue-500",
+    label: "Vedic Vaibhav on X (Twitter)",
   },
   {
     icon: Instagram,
     href: "https://instagram.com/vedicvaibhav_/",
     color: "text-pink-500",
+    label: "Vedic Vaibhav on Instagram",
   },
   {
     icon: LinkedInIcon,
     href: "https://www.linkedin.com/company/vedic-vaibhav/posts/?feedView=all",
     color: "text-blue-700",
+    label: "Vedic Vaibhav on LinkedIn",
   },
 ];
 
@@ -295,17 +301,19 @@ const Footer: React.FC = () => {
 
         {/* Social Icons – Desktop */}
         <div className="flex justify-center space-x-6 py-4 md:flex hidden border-t border-orange-100 mx-[6%]">
-          {socialIcons.map(({ icon: Icon, href, color }) => (
+          {socialIcons.map(({ icon: Icon, href, color, label }) => (
             <motion.a
               key={href}
               href={href}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label={label}
+              title={label}
               className={`${color} text-2xl`}
               whileHover={{ scale: 1.2 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
-              <Icon fontSize="inherit" />
+              <Icon fontSize="inherit" aria-hidden="true" />
             </motion.a>
           ))}
         </div>
@@ -454,17 +462,19 @@ const Footer: React.FC = () => {
           {/* Social & Bottom */}
           <div className="pt-2 space-y-3">
             <div className="flex justify-center space-x-6">
-              {socialIcons.map(({ icon: Icon, href, color }) => (
+              {socialIcons.map(({ icon: Icon, href, color, label }) => (
                 <motion.a
                   key={href}
                   href={href}
                   target="_blank"
                   rel="noopener"
+                  aria-label={label}
+                  title={label}
                   className={`${color} text-2xl`}
                   whileHover={{ scale: 1.2 }}
                   transition={{ type: "spring", stiffness: 300 }}
                 >
-                  <Icon fontSize="inherit" />
+                  <Icon fontSize="inherit" aria-hidden="true" />
                 </motion.a>
               ))}
             </div>

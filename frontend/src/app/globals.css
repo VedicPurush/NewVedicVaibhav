@@ -216,6 +216,95 @@ body {
   }
 }
 
+/* ── Navigation spinner ──
+
+   The overlay shown by components/global/NavigationProgress for the duration of
+   every client-side navigation. Kept in CSS rather than inline styles so the
+   keyframes exist once for the whole app, and so the reduced-motion rule below
+   can reach them. */
+
+.vv-nav-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Purely visual: a stuck navigation must never lock the user out of the
+     navbar, so clicks pass straight through to the page underneath. */
+  pointer-events: none;
+  background: rgba(255, 250, 244, 0.62);
+  animation: vv-nav-fade-in 160ms ease-out;
+}
+
+.vv-nav-spinner {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 107, 0, 0.18);
+  border-top-color: #ff6b00;
+  animation: vv-nav-spin 0.7s linear infinite;
+}
+
+@keyframes vv-nav-spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes vv-nav-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vv-nav-overlay {
+    animation: none;
+  }
+
+  /* Slowed rather than stopped: the spin IS the loading signal here, and a
+     motionless ring reads as a frozen page — the very thing this fixes. */
+  .vv-nav-spinner {
+    animation-duration: 1.6s;
+  }
+}
+
+/* ── Loading skeletons ──
+
+   Used by the route-level loading.tsx fallbacks under app/. The sweep is a pseudo-element
+   rather than a background-position animation so it composites on the GPU: a
+   listing skeleton paints ~20 of these at once, and animating background-position
+   on all of them repaints the whole grid every frame. */
+
+.vv-skel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background-color: #efe4d8;
+}
+
+.vv-skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  animation: vv-skel-sweep 1.5s ease-in-out infinite;
+}
+
+@keyframes vv-skel-sweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vv-skel::after {
+    animation: none;
+  }
+}
+
 /* ── Legacy App.css ── */
 
 input,

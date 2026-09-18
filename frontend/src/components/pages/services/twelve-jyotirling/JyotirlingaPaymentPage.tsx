@@ -57,7 +57,7 @@ type JyotirlingaPaymentState = {
 
 const JYOTIRLINGA_COUPONS = [
   { code: "VVJatin@100", label: "Special Staff Discount", discount: 0, minPackagePrice: 0, visible: false },
-  { code: "JATIN@100", label: "Special Testing Code", discount: 0, minPackagePrice: 0, visible: false },
+  { code: "TYAGI@19", label: "Special Testing Code", discount: 0, minPackagePrice: 0, visible: false },
 ];
 
 const FAMILY_MEMBER_ADDON_PER_MEMBER = 99;

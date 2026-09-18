@@ -11,6 +11,9 @@ import { useCombinedPoojasQuery } from "@/hooks/useAllPoojas";
 import { fetchAnyPoojaById } from "@/lib/api/puja.api";
 import { PUJA_KEYS } from "@/lib/query-keys/puja.keys";
 import { useActiveMandirsQuery } from "@/hooks/queries/useMandirQueries";
+import { usePitruPujaQuery } from "@/hooks/queries/usePitruPujaQueries";
+import { PITRU_PUJA_ID } from "@/components/pages/services/puja/pitru-puja/constants";
+import { getNextPitruPujaDate, type PitruPuja } from "@/lib/api/pitruPuja.api";
 
 const MAX_CARDS = 6;
 
@@ -59,7 +62,9 @@ type PujaItem = {
   updatedAt: string;
   __v: number;
   // --- present only on poojas from the new `newpoojas` collection ---
-  source?: "new" | "legacy";
+  source?: "new" | "legacy" | "pitru";
+  /** Card link override — set for pujas that have their own landing page. */
+  href?: string;
   poojaDates?: string[];
   mandirDetails?: any[];
   originalPrice?: number;
@@ -85,6 +90,36 @@ const soonestUpcoming = (dates: any[]): string => {
     .filter((d) => !isNaN(d.getTime()) && d >= startOfToday)
     .sort((a, b) => a.getTime() - b.getTime());
   return upcoming.length ? upcoming[0].toISOString() : "";
+};
+
+/** Projects the Pitru Dosh Shanti puja into this widget's card shape. */
+const pitruPujaToItem = (pitru: PitruPuja): PujaItem => {
+  const prices = pitru.packages.map((pkg) => pkg.price).filter((price) => Number.isFinite(price));
+  const lowestPrice = prices.length ? Math.min(...prices) : 0;
+  return {
+    _id: pitru._id,
+    poojaID: pitru.pujaId,
+    title: pitru.pujaName,
+    poojaCardImage: pitru.cardImage || pitru.bannerImages?.[0] || "",
+    images: pitru.bannerImages ?? [],
+    poojaCardBenefit: pitru.subName || pitru.reason || "",
+    poojaDescription: pitru.reason || "",
+    moolmantra: "",
+    mandirLists: [
+      {
+        mandirId: "",
+        mandirName: [pitru.mandirName, pitru.mandirPlace].filter(Boolean).join(", ") || undefined,
+        discountPrice: lowestPrice,
+        originalPrice: lowestPrice,
+        poojaMandirDates: getNextPitruPujaDate(pitru.mandirDate) ?? "",
+      } as PoojaMandirList,
+    ],
+    isActive: pitru.isActive,
+    isExclusive: false,
+    isFeatured: false,
+    source: "pitru",
+    href: "/services/puja/pitru-dosh-shanti-puja",
+  } as PujaItem;
 };
 
 const SectionHeading = () => (
@@ -157,6 +192,11 @@ export default function Puja({ initialPoojas, initialMandirs }: PujaProps) {
 
   const queryClient = useQueryClient();
 
+  // Separate collection, client-only: the server HTML never includes it, so it
+  // joins the list only after hydration (see `hydrated` above). A failed fetch
+  // simply leaves it out.
+  const { data: pitruPuja } = usePitruPujaQuery(PITRU_PUJA_ID);
+
   const prefetchPujaDetail = useCallback(
     (pujaId: string) => {
       const id = String(pujaId || "");
@@ -177,7 +217,7 @@ export default function Puja({ initialPoojas, initialMandirs }: PujaProps) {
   // document. Project them into the mandirLists shape the rest of this widget
   // reads, so cards, prices, dates and sorting keep working unchanged.
   const normalizedPujaData: PujaItem[] = useMemo(() => {
-    return (sourcePoojas || []).map((puja: PujaItem) => {
+    const items = (sourcePoojas || []).map((puja: PujaItem) => {
       if (puja.source !== "new") return puja;
       const md = puja.mandirDetails?.[0];
       return {
@@ -196,7 +236,9 @@ export default function Puja({ initialPoojas, initialMandirs }: PujaProps) {
         ],
       };
     });
-  }, [sourcePoojas]);
+    if (hydrated && pitruPuja?.isActive) items.push(pitruPujaToItem(pitruPuja));
+    return items;
+  }, [sourcePoojas, hydrated, pitruPuja]);
 
   // One shared, cached request for every active mandir instead of a separate
   // round trip per unique mandir id — that fan-out (and gating render on all
@@ -329,9 +371,9 @@ export default function Puja({ initialPoojas, initialMandirs }: PujaProps) {
             return (
               <li
                 key={puja._id}
-                onMouseEnter={() => prefetchPujaDetail(puja._id)}
-                onFocus={() => prefetchPujaDetail(puja._id)}
-                onTouchStart={() => prefetchPujaDetail(puja._id)}
+                onMouseEnter={() => !puja.href && prefetchPujaDetail(puja._id)}
+                onFocus={() => !puja.href && prefetchPujaDetail(puja._id)}
+                onTouchStart={() => !puja.href && prefetchPujaDetail(puja._id)}
                 className="flex-none w-[160px] sm:w-[285px] max-w-[180px] sm:max-w-[300px]"
               >
                 <PujaCard
@@ -343,6 +385,7 @@ export default function Puja({ initialPoojas, initialMandirs }: PujaProps) {
                   price={getLowestDiscountPrice(puja.mandirLists)}
                   mandirName={mandirName}
                   mandirDate={mandirDate}
+                  href={puja.href}
                 />
               </li>
             );

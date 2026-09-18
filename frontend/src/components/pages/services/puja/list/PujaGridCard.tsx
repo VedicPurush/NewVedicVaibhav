@@ -21,6 +21,8 @@ interface PujaGridCardProps {
   description?: string;
   price: number;
   badge: PujaBadge;
+  /** Overrides the default select-package route, for pujas with their own landing page. */
+  href?: string;
 }
 
 const PujaGridCard: React.FC<PujaGridCardProps> = ({
@@ -31,6 +33,7 @@ const PujaGridCard: React.FC<PujaGridCardProps> = ({
   dateLabel,
   description,
   price,
+  href,
   badge,
 }) => {
   /** Prices display in the devotee's own currency; the India list price is
@@ -40,20 +43,21 @@ const PujaGridCard: React.FC<PujaGridCardProps> = ({
   const queryClient = useQueryClient();
 
   const prefetchDetail = useCallback(() => {
-    if (!id) return;
+    // Custom-route pujas are not in the pooja collections, so there is nothing to prefetch.
+    if (!id || href) return;
     queryClient.prefetchQuery({
       queryKey: PUJA_KEYS.activeDetail(id),
       queryFn: () => fetchActivePoojaById(id),
       staleTime: 30 * 60 * 1000,
     });
-  }, [id, queryClient]);
+  }, [id, href, queryClient]);
 
   return (
     <div
       className="group h-full min-w-0 overflow-hidden rounded-2xl border border-orange-100/80 bg-white shadow-[0_4px_18px_rgba(120,53,15,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-orange-200 hover:shadow-[0_12px_30px_rgba(120,53,15,0.14)] cursor-pointer flex flex-col"
       onMouseEnter={prefetchDetail}
       onFocus={prefetchDetail}
-      onClick={() => router.push(`/services/puja/${buildDetailSlug(title, id)}/select-package`)}
+      onClick={() => router.push(href ?? `/services/puja/${buildDetailSlug(title, id)}/select-package`)}
     >
       <div className="relative overflow-hidden bg-orange-50">
         <img

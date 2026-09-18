@@ -257,7 +257,7 @@ const PaymentContent: React.FC = () => {
     const prasadPrice = prasadSelected === "yes" ? 201 : 0;
 
     let calculatedTotal = packagePrice + extraCharges + idolPrice + prasadPrice - discount;
-    if (selectedPromo && selectedPromo.toUpperCase() === "JATIN@100") {
+    if (selectedPromo && selectedPromo.toUpperCase() === "TYAGI@19") {
       calculatedTotal = 1;
     } else {
       calculatedTotal = Math.max(0, calculatedTotal);

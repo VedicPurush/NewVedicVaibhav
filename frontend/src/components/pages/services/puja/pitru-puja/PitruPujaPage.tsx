@@ -3,77 +3,172 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import TempleHinduIcon from "@mui/icons-material/TempleHindu";
+import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
 import NightsStayIcon from "@mui/icons-material/NightsStay";
-import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
-import OndemandVideoIcon from "@mui/icons-material/OndemandVideo";
-import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
+import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
+import OndemandVideoOutlinedIcon from "@mui/icons-material/OndemandVideoOutlined";
 import SelfImprovementIcon from "@mui/icons-material/SelfImprovement";
+import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
+import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Loadinggif from "@/components/shared/LoadingGif";
-import PackageSelectSheet, { type PujaPackage } from "./PackageSelectSheet";
 import { usePitruPujaQuery } from "@/hooks/queries/usePitruPujaQueries";
 import { PITRU_PUJA_ID } from "./constants";
-import type { PitruPujaFeatureCard } from "@/lib/api/pitruPuja.api";
+import PujaCountdown from "./PujaCountdown";
+import {
+  getNextPitruPujaDate,
+  type PitruPuja,
+  type PitruPujaBenefit,
+  type PitruPujaFaq,
+  type PitruPujaFeatureCard,
+} from "@/lib/api/pitruPuja.api";
 
-const BADGE_ICONS = [TempleHinduIcon, NightsStayIcon];
+const MAROON = "#8E1529";
+
+const BADGE_ICONS = [ReportProblemOutlinedIcon, NightsStayIcon];
 const BADGE_STYLES = [
-  "bg-[#FBE7C6] text-[#8A4B12]",
-  "bg-[#5C1D1D] text-white",
+  "bg-[#FDE9D3] text-[#E0701F] border border-[#F2B27A]",
+  "bg-[#262F7E] text-white border border-[#262F7E]",
 ];
 
-/** Used whenever a feature card has no `image` set — one per position, cycling. */
-const FEATURE_FALLBACK_ICONS = [OndemandVideoIcon, LocalFireDepartmentIcon, SelfImprovementIcon];
+/** "ॐ" has no MUI icon, so the third fallback is rendered as text. */
+const OmIcon = ({ style }: { style?: React.CSSProperties }) => (
+  <span style={{ ...style, lineHeight: 1, fontWeight: 700 }}>ॐ</span>
+);
 
-/** Decorative silhouette shown behind the title/subname/reason block. */
-const TITLE_BG_IMAGE_URL =
-  "https://vedic-vaibhav.blr1.cdn.digitaloceanspaces.com/vedic-vaibhav/c4290bb8-7174-4b35-9a67-01685410b893-optimized.webp";
+/** Used whenever a feature card has no `image` set — one per position, cycling. */
+const FEATURE_FALLBACK_ICONS = [OndemandVideoOutlinedIcon, SelfImprovementIcon, OmIcon];
 
 /** Shown only until `featureCards` is populated on the puja document. */
 const DEFAULT_FEATURE_CARDS: PitruPujaFeatureCard[] = [
-  { image: "https://vedic-vaibhav.blr1.cdn.digitaloceanspaces.com/vedic-vaibhav/video-optimized.webp", title: "Get Puja Video", description: "Complete puja video will be shared within 2 days" },
-  { image: "https://vedic-vaibhav.blr1.cdn.digitaloceanspaces.com/vedic-vaibhav/pandit%20(1).webp", title: "Proper Rituals Followed", description: "Best Pandit Ji from temple will do your puja" },
-  { image: "https://vedic-vaibhav.blr1.cdn.digitaloceanspaces.com/vedic-vaibhav/mantra%20(1).webp", title: "Mantra for Chanting", description: "Special mantra shared to get blessings" },
+  { title: "Get Puja Video", description: "Complete puja video will be shared within 2 days" },
+  { title: "Proper Ritual Followed", description: "Best Pandit Ji from temple will do your puja" },
+  { title: "Mantra for Chanting", description: "Special mantra shared to get blessings" },
 ];
 
-type TabKey = "about" | "benefits" | "mandir";
-
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "about", label: "About This Puja" },
-  { key: "benefits", label: "Benefits" },
-  { key: "mandir", label: "About Mandir" },
+/** Shown only until `faqs` is populated on the puja document. */
+const DEFAULT_FAQS: PitruPujaFaq[] = [
+  {
+    question: "How do I know my Puja was actually performed?",
+    answer: "The complete video of your puja, including the sankalp taken in your name, is shared with you within 2 days of the puja.",
+  },
+  {
+    question: "Is Vedic vaibhav authorized by the temple?",
+    answer: "Your puja is performed at the temple by Pandit Ji from the temple itself, following the proper rituals.",
+  },
+  {
+    question: "I don't know my Gotra-can I still book?",
+    answer: "Yes. If you do not know your Gotra, the sankalp is taken with Kashyap Gotra, as is the tradition.",
+  },
 ];
 
-const ACCENTS: PujaPackage["accent"][] = ["rose", "violet", "amber"];
-
-const MONTH_ABBR = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sept", "Oct", "Nov", "Dec",
+const BENEFIT_STYLES = [
+  { card: "bg-[#FFF1F1] border-[#F3C9C9]", icon: "bg-[#A3162C]", link: "text-[#A3162C]" },
+  { card: "bg-[#EFF3FF] border-[#CAD6F6]", icon: "bg-[#3E5BD8]", link: "text-[#3E5BD8]" },
+  { card: "bg-[#F0FAF0] border-[#C8EAC8]", icon: "bg-[#2E9E45]", link: "text-[#2E9E45]" },
 ];
 
-const formatMandirDate = (isoDate?: string): { dateLabel: string } | null => {
+const PACKAGE_STYLES = [
+  { chip: "bg-[#E7EEFF] text-[#3E5BD8]", price: "text-[#4A2BD0]" },
+  { chip: "bg-[#EFE7FF] text-[#7A3FD8]", price: "text-[#4A2BD0]" },
+  { chip: "bg-[#FFEEDC] text-[#E0701F]", price: "text-[#E0701F]" },
+];
+
+/** Descriptions longer than this are clamped to two lines behind "Read more". */
+const BENEFIT_CLAMP_CHARS = 90;
+
+type SectionKey = "about" | "benefits" | "mandir" | "package" | "faq";
+
+const SECTION_LABELS: Record<SectionKey, string> = {
+  about: "About This Puja",
+  benefits: "Benefits",
+  mandir: "About Mandir",
+  package: "Package",
+  faq: "FAQ",
+};
+
+const sectionDomId = (key: SectionKey) => `pitru-${key}`;
+
+/** Pinned to IST so the server render and the browser agree on the day. */
+const formatMandirDate = (isoDate?: string): string | null => {
   if (!isoDate) return null;
   const date = new Date(isoDate);
   if (isNaN(date.getTime())) return null;
-  const day = `${date.getDate()} ${MONTH_ABBR[date.getMonth()]}`;
-  const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
-  return { dateLabel: `${day}, ${weekday}` };
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    date.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", ...options });
+  return `${part({ day: "numeric" })} ${part({ month: "short" })}, ${part({ weekday: "short" })}`;
 };
 
-const PitruPujaPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabKey>("about");
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+/** `benefits` used to be plain strings; accept both until every document is migrated. */
+const normalizeBenefit = (benefit: string | PitruPujaBenefit): PitruPujaBenefit =>
+  typeof benefit === "string" ? { title: benefit, description: "" } : benefit;
+
+const PARAGRAPH_BREAK = /<\/p>\s*<p(?:\s[^>]*)?>/;
+const plainText = (html: string) => html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ");
+
+/**
+ * Copy pasted into the admin editor from a fixed-width source arrives as one
+ * `<p>` per visual line, which renders as a sentence broken across paragraphs.
+ * A break is treated as such a soft wrap when the next line starts with
+ * whitespace or the previous one stops mid-sentence; real paragraph breaks
+ * (previous line ends in punctuation, next starts cleanly) are kept.
+ */
+const joinWrappedParagraphs = (html: string): string => {
+  const pieces = html.split(PARAGRAPH_BREAK);
+  return pieces.reduce((out, piece, index) => {
+    if (index === 0) return piece;
+    const prev = plainText(pieces[index - 1]).trimEnd();
+    const next = plainText(piece);
+    const isSoftWrap = /^\s/.test(next) || (prev !== "" && !/[.!?:।॥]["')]*$/.test(prev));
+    return out + (isSoftWrap ? " " : "</p><p>") + piece;
+  }, "");
+};
+
+const formatPrice = (price: number) => `₹${price.toLocaleString("en-IN")}/-`;
+
+interface PujaPackage {
+  id: string;
+  title: string;
+  persons: number;
+  price: number;
+  image?: string;
+}
+
+const SectionHeading: React.FC<{ title: string; highlighted?: boolean }> = ({ title, highlighted }) => (
+  <div
+    className={`flex items-center gap-2 py-1.5 mb-3 ${
+      highlighted ? "bg-gradient-to-r from-[#FDE4E4] via-[#FFF4F4] to-transparent -mx-3 px-3" : ""
+    }`}
+  >
+    <span className="w-[5px] h-5 rounded-full bg-gradient-to-b from-[#7A0F1F] to-[#F2B8B8] shrink-0" />
+    <h2 className="font-heading text-[18px] md:text-[20px] text-[#7A0F1F] leading-none">{title}</h2>
+  </div>
+);
+
+interface PitruPujaPageProps {
+  /** Fetched on the server (see lib/server/pitruPujaData.ts) so the first render
+   *  already has the banner and copy instead of a loading GIF. */
+  serverPuja?: PitruPuja | null;
+}
+
+const PitruPujaPage: React.FC<PitruPujaPageProps> = ({ serverPuja }) => {
+  const [activeSection, setActiveSection] = useState<SectionKey>("about");
   const [selectedPackageId, setSelectedPackageId] = useState("");
+  const [expandedBenefits, setExpandedBenefits] = useState<Set<number>>(new Set());
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const router = useRouter();
 
-  const { data: pitruPuja, isLoading } = usePitruPujaQuery(PITRU_PUJA_ID);
+  const { data } = usePitruPujaQuery(PITRU_PUJA_ID, serverPuja);
 
-  // Matches the loading gate used across the pooja/chadhava pages: `!pitruPuja`
-  // also covers the brief window right after hydration where the query hasn't
-  // started fetching yet, which `isLoading` alone misses on a hard reload and
-  // was flashing "This puja could not be found." before the real data arrived.
-  if (isLoading || !pitruPuja) return <Loadinggif />;
+  // `initialData` is ignored whenever the cache already holds this key, so a copy
+  // restored from IndexedDB — possibly empty, or older than the latest admin
+  // edit — would win over the document the server just fetched. Prefer the
+  // server copy; the cache only fills in when the server fetch failed, and the
+  // loading GIF only shows while that fallback query is still in flight.
+  const pitruPuja = serverPuja ?? data;
+  if (!pitruPuja) return <Loadinggif />;
 
   const packages: PujaPackage[] = pitruPuja.packages.map((pkg, index) => ({
     id: `${pkg.label}-${index}`,
@@ -81,24 +176,48 @@ const PitruPujaPage: React.FC = () => {
     persons: pkg.personCount,
     price: pkg.price,
     image: pkg.image,
-    accent: ACCENTS[index % ACCENTS.length],
   }));
+  const selectedPackage = packages.find((pkg) => pkg.id === selectedPackageId);
 
-  const mandirDate = formatMandirDate(pitruPuja.mandirDate?.[0]);
+  const benefits = (pitruPuja.benefits ?? []).map(normalizeBenefit);
+  const faqs = pitruPuja.faqs?.length ? pitruPuja.faqs : DEFAULT_FAQS;
+  const featureCards = pitruPuja.featureCards?.length ? pitruPuja.featureCards : DEFAULT_FEATURE_CARDS;
+  const nextPujaDate = getNextPitruPujaDate(pitruPuja.mandirDate);
+  const mandirDate = formatMandirDate(nextPujaDate);
   const bannerImage = pitruPuja.bannerImages?.[0];
-  const bannerBgImage = pitruPuja.bannerImages?.[1];
 
-  const handleProceed = (pkg: PujaPackage) => {
-    setIsSheetOpen(false);
+  const sections: SectionKey[] = [
+    "about",
+    ...(benefits.length ? (["benefits"] as const) : []),
+    ...(pitruPuja.aboutMandir ? (["mandir"] as const) : []),
+    ...(packages.length ? (["package"] as const) : []),
+    ...(faqs.length ? (["faq"] as const) : []),
+  ];
+
+  const scrollToSection = (key: SectionKey) => {
+    setActiveSection(key);
+    document.getElementById(sectionDomId(key))?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const toggleBenefit = (index: number) =>
+    setExpandedBenefits((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+
+  const handleProceed = () => {
+    if (!selectedPackage) return;
     const params = new URLSearchParams({
-      packageId: pkg.id,
-      title: pkg.title,
-      persons: String(pkg.persons),
-      price: String(pkg.price),
-      ...(mandirDate ? { dateLabel: mandirDate.dateLabel } : {}),
+      packageId: selectedPackage.id,
+      title: selectedPackage.title,
+      persons: String(selectedPackage.persons),
+      price: String(selectedPackage.price),
+      ...(mandirDate ? { dateLabel: mandirDate } : {}),
       ...(pitruPuja.mandirName ? { mandirName: pitruPuja.mandirName } : {}),
       ...(pitruPuja.mandirPlace ? { mandirPlace: pitruPuja.mandirPlace } : {}),
-      ...(pkg.image ? { image: pkg.image } : {}),
+      ...(selectedPackage.image ? { image: selectedPackage.image } : {}),
     });
     router.push(`/services/puja/pitru-dosh-shanti-puja/book?${params.toString()}`);
   };
@@ -108,47 +227,40 @@ const PitruPujaPage: React.FC = () => {
       <style>{`
         .pitru-rich-text span { background-color: transparent !important; color: inherit !important; }
         .pitru-rich-text p:empty { display: none; }
-        .pitru-rich-text p { margin-bottom: 0.5rem; }
+        .pitru-rich-text p { margin-bottom: 0.25rem; }
       `}</style>
       <Navbar activeIndex="puja" />
 
-      <div className="bg-[#FFF8F0] pt-[6vh] pb-28">
+      <div className="bg-white pt-[6vh]">
         <div className="max-w-3xl mx-auto px-3 md:px-0">
           {/* Banner */}
           {bannerImage && (
-            <div className="relative rounded-3xl overflow-hidden shadow-lg">
+            <div className="rounded-md overflow-hidden">
               <img
                 loading="eager"
                 fetchPriority="high"
+                width={768}
+                height={196}
                 src={bannerImage}
                 alt={pitruPuja.pujaName}
-                className="w-full h-[220px] md:h-[320px] object-cover bg-[#F4E4CC]"
+                className="w-full h-[196px] md:h-[320px] object-cover bg-[#D9D9D9]"
               />
-              {bannerBgImage && (
-                <img
-                  loading="lazy"
-                  src={bannerBgImage}
-                  alt=""
-                  aria-hidden
-                  className="absolute bottom-0 right-0 h-[70%] max-w-[45%] object-contain object-right-bottom pointer-events-none"
-                />
-              )}
             </div>
           )}
 
           {/* Badges */}
           {pitruPuja.festiveTags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 mt-4">
+            <div className="flex flex-wrap items-center gap-2 mt-3">
               {pitruPuja.festiveTags.map((tag, index) => {
                 const Icon = BADGE_ICONS[index % BADGE_ICONS.length];
                 return (
                   <span
                     key={tag}
-                    className={`inline-flex items-center gap-1.5 rounded-full text-[11px] md:text-[12px] font-semibold px-3.5 py-1.5 ${
+                    className={`inline-flex items-center gap-1 rounded-full text-[12px] md:text-[13px] px-2.5 py-1 ${
                       BADGE_STYLES[index % BADGE_STYLES.length]
                     }`}
                   >
-                    <Icon style={{ fontSize: 15 }} />
+                    <Icon style={{ fontSize: 14 }} />
                     {tag}
                   </span>
                 );
@@ -156,57 +268,43 @@ const PitruPujaPage: React.FC = () => {
             </div>
           )}
 
-          {/* Title + subtitle + reason, wrapped around a decorative side image */}
-          <div className="relative mt-4">
-            <img
-              loading="lazy"
-              src={TITLE_BG_IMAGE_URL}
-              alt=""
-              aria-hidden
-              className="absolute top-0 -right-3 md:right-0 h-40 md:h-56 w-[42%] md:w-[38%] object-cover object-right pointer-events-none select-none"
-            />
-            <div className="relative pr-24 md:pr-48">
-              <h1 className="font-display text-[26px] md:text-[34px] font-bold leading-tight text-[#5C1D1D]">
-                {pitruPuja.pujaName}
-              </h1>
-              {pitruPuja.subName && (
-                <p className="font-elegant text-[15px] md:text-[17px] text-[#8A4B12] mt-1.5">
-                  {pitruPuja.subName}
-                </p>
-              )}
-              {pitruPuja.reason && (
-                <p className="italic text-[13px] md:text-[14px] text-stone-500 mt-3 leading-relaxed">
-                  {pitruPuja.reason}
-                </p>
-              )}
-            </div>
-          </div>
+          {/* Title + subtitle + reason */}
+          <h1 className="font-heading font-bold text-[26px] md:text-[34px] leading-[1.15] text-[#7A0F1F] mt-3">
+            {pitruPuja.pujaName}
+          </h1>
+          {pitruPuja.subName && (
+            <p className="text-[14px] md:text-[16px] font-medium text-[#E8743B] mt-1.5 pb-2 border-b border-dashed border-[#F2B27A]">
+              {pitruPuja.subName}
+            </p>
+          )}
+          {pitruPuja.reason && (
+            <p className="italic text-[12px] md:text-[13px] text-stone-500 mt-2 leading-relaxed">
+              {pitruPuja.reason}
+            </p>
+          )}
 
-          {/* Location + Date chips */}
+          {/* Mandir + Date strip */}
           {(pitruPuja.mandirName || mandirDate) && (
-            <div className="flex flex-row gap-2 my-6">
+            <div className="flex items-stretch bg-[#8D1B2E] rounded-xl mt-4 py-3 text-white">
               {pitruPuja.mandirName && (
-                <div className="flex items-center gap-2 bg-white rounded-2xl px-4 py-3 shadow-sm flex-1">
-                  <span className="flex items-center justify-center w-9 h-9 rounded-full bg-[#5C1D1D] shrink-0">
-                    <LocationOnIcon style={{ fontSize: 18, color: "#fff" }} />
-                  </span>
-                  <div className="leading-tight">
-                    <div className="text-[13px] font-semibold text-stone-800">{pitruPuja.mandirName}</div>
+                <div className="flex items-center gap-3 flex-1 px-4 min-w-0">
+                  <TempleHinduIcon style={{ fontSize: 26 }} className="shrink-0" />
+                  <div className="leading-tight min-w-0">
+                    <div className="italic text-[13px] md:text-[14px]">{pitruPuja.mandirName}</div>
                     {pitruPuja.mandirPlace && (
-                      <div className="text-[12px] text-stone-500">{pitruPuja.mandirPlace}</div>
+                      <div className="italic text-[10px] md:text-[11px] opacity-80">{pitruPuja.mandirPlace}</div>
                     )}
                   </div>
                 </div>
               )}
+              {pitruPuja.mandirName && mandirDate && <div className="w-px bg-white/70 my-0.5" />}
               {mandirDate && (
-                <div className="flex items-center gap-2 bg-white rounded-2xl px-4 py-3 shadow-sm flex-1">
-                  <span className="flex items-center justify-center w-9 h-9 rounded-full bg-[#C98A3B] shrink-0">
-                    <CalendarTodayIcon style={{ fontSize: 16, color: "#fff" }} />
-                  </span>
+                <div className="flex items-center gap-2 basis-[30%] shrink-0 min-w-fit pl-3 pr-2 whitespace-nowrap">
+                  <CalendarMonthOutlinedIcon style={{ fontSize: 20 }} className="shrink-0" />
                   <div className="leading-tight">
-                    <div className="text-[13px] font-semibold text-stone-800">{mandirDate.dateLabel}</div>
+                    <div className="italic text-[13px] md:text-[14px]">{mandirDate}</div>
                     {pitruPuja.festiveName && (
-                      <div className="text-[12px] text-stone-500">{pitruPuja.festiveName}</div>
+                      <div className="italic text-[10px] md:text-[11px] opacity-80">{pitruPuja.festiveName}</div>
                     )}
                   </div>
                 </div>
@@ -215,94 +313,244 @@ const PitruPujaPage: React.FC = () => {
           )}
 
           {/* Feature cards */}
-          <div className="grid grid-cols-3 gap-2 md:gap-4 mt-6">
-            {(pitruPuja.featureCards?.length ? pitruPuja.featureCards : DEFAULT_FEATURE_CARDS).map(
-              (card, index) => {
-                const FallbackIcon = FEATURE_FALLBACK_ICONS[index % FEATURE_FALLBACK_ICONS.length];
-                return (
-                  <div
-                    key={`${card.title}-${index}`}
-                    className="bg-white rounded-2xl shadow-sm px-2 py-2 flex flex-col items-center text-center gap-1"
-                  >
-                    {card.image ? (
-                      <img
-                        loading="lazy"
-                        src={card.image}
-                        alt={card.title}
-                        className="w-20 h-20 rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="flex items-center justify-center w-10 h-10 rounded-full bg-[#FBE7C6]">
-                        <FallbackIcon style={{ fontSize: 20, color: "#C98A3B" }} />
-                      </span>
-                    )}
-                    <div className="text-[12px] md:text-[13px] font-semibold text-stone-800 leading-tight">
-                      {card.title}
-                    </div>
-                    <div className="text-[10px] md:text-[11px] text-stone-500 leading-snug">
-                      {card.description}
-                    </div>
+          <div className="grid grid-cols-3 gap-2 md:gap-4 mt-4">
+            {featureCards.map((card, index) => {
+              const FallbackIcon = FEATURE_FALLBACK_ICONS[index % FEATURE_FALLBACK_ICONS.length];
+              return (
+                <div
+                  key={`${card.title}-${index}`}
+                  className="bg-white border border-stone-200 rounded-2xl shadow-[0_2px_6px_rgba(0,0,0,0.12)] px-1.5 py-4 flex flex-col items-center text-center gap-1.5"
+                >
+                  {card.image ? (
+                    <img loading="lazy" src={card.image} alt="" className="w-8 h-8 object-contain" />
+                  ) : (
+                    <FallbackIcon style={{ fontSize: 28, color: MAROON }} />
+                  )}
+                  <div className="text-[12px] md:text-[13px] font-medium text-[#7A0F1F] leading-tight">
+                    {card.title}
                   </div>
-                );
-              },
-            )}
+                  <div className="text-[9.5px] md:text-[11px] text-stone-500 leading-snug">{card.description}</div>
+                </div>
+              );
+            })}
           </div>
+        </div>
 
-          {/* Tabs */}
-          <div className="mt-8 border-b border-stone-200 flex gap-6">
-            {TABS.map((tab) => (
+        {/* Section tabs */}
+        <div className="mt-4 border-y border-stone-300">
+          <div className="max-w-3xl mx-auto px-3 md:px-0 flex justify-between gap-3 overflow-x-auto">
+            {sections.map((key) => (
               <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`pb-2.5 text-[13px] md:text-[14px] font-medium transition-colors border-b-2 -mb-px ${
-                  activeTab === tab.key
-                    ? "text-[#5C1D1D] border-[#5C1D1D]"
-                    : "text-stone-400 border-transparent hover:text-stone-600"
+                key={key}
+                type="button"
+                onClick={() => scrollToSection(key)}
+                className={`whitespace-nowrap py-2.5 text-[12px] md:text-[14px] border-b-2 transition-colors ${
+                  activeSection === key
+                    ? "font-semibold text-stone-900 border-[#7A0F1F]"
+                    : "text-stone-700 border-transparent hover:text-stone-900"
                 }`}
               >
-                {tab.label}
+                {SECTION_LABELS[key]}
               </button>
             ))}
           </div>
-          <div className="mt-4 pitru-rich-text text-[13px] md:text-[14px] leading-relaxed text-stone-600">
-            {activeTab === "about" && <div dangerouslySetInnerHTML={{ __html: pitruPuja.about }} />}
-            {activeTab === "benefits" && (
-              <ul className="space-y-2 list-disc pl-4">
-                {pitruPuja.benefits.map((benefit) => (
-                  <li key={benefit}>{benefit}</li>
-                ))}
-              </ul>
-            )}
-            {activeTab === "mandir" && <div dangerouslySetInnerHTML={{ __html: pitruPuja.aboutMandir }} />}
-          </div>
         </div>
+
+        <div className="max-w-3xl mx-auto px-3 md:px-0">
+          {/* About This Puja */}
+          <section id={sectionDomId("about")} className="scroll-mt-28 mt-5">
+            <SectionHeading title="About This Puja" highlighted />
+            <div
+              className="pitru-rich-text border border-[#B4475A] rounded-xl px-3 py-3 text-[12px] md:text-[14px] leading-[1.9] text-stone-600"
+              dangerouslySetInnerHTML={{ __html: joinWrappedParagraphs(pitruPuja.about) }}
+            />
+          </section>
+
+          {/* Benefits */}
+          {benefits.length > 0 && (
+            <section id={sectionDomId("benefits")} className="scroll-mt-28 mt-6">
+              <SectionHeading title="Benefits" />
+              <div className="space-y-3">
+                {benefits.map((benefit, index) => {
+                  const style = BENEFIT_STYLES[index % BENEFIT_STYLES.length];
+                  const isLong = benefit.description.length > BENEFIT_CLAMP_CHARS;
+                  const isExpanded = expandedBenefits.has(index);
+                  return (
+                    <div
+                      key={`${benefit.title}-${index}`}
+                      className={`flex items-start gap-3 border rounded-xl px-3 py-3 ${style.card}`}
+                    >
+                      <span
+                        className={`flex items-center justify-center w-9 h-9 rounded-full shrink-0 ${style.icon}`}
+                      >
+                        <VerifiedUserIcon style={{ fontSize: 18, color: "#fff" }} />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-[13px] md:text-[15px] font-medium text-stone-900 leading-snug">
+                          {benefit.title}
+                        </div>
+                        {benefit.description && (
+                          <p className="text-[11px] md:text-[13px] text-stone-500 leading-snug mt-1">
+                            <span className={isLong && !isExpanded ? "line-clamp-2" : undefined}>
+                              {benefit.description}
+                            </span>
+                            {isLong && (
+                              <button
+                                type="button"
+                                onClick={() => toggleBenefit(index)}
+                                className={`font-medium ${style.link}`}
+                              >
+                                {isExpanded ? "Read less" : "Read more"}
+                              </button>
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* About The Mandir */}
+          {pitruPuja.aboutMandir && (
+            <section id={sectionDomId("mandir")} className="scroll-mt-28 mt-6">
+              <SectionHeading title="About The Mandir" />
+              <div
+                className="pitru-rich-text border border-[#B4475A] rounded-xl px-3 py-3 text-[12px] md:text-[14px] leading-[1.9] text-stone-600"
+                dangerouslySetInnerHTML={{ __html: joinWrappedParagraphs(pitruPuja.aboutMandir) }}
+              />
+            </section>
+          )}
+
+          {/* Packages */}
+          {packages.length > 0 && (
+            <section id={sectionDomId("package")} className="scroll-mt-28 mt-6">
+              <SectionHeading title="Select your Puja Package" />
+              <div className="space-y-3" role="radiogroup" aria-label="Puja package">
+                {packages.map((pkg, index) => {
+                  const style = PACKAGE_STYLES[index % PACKAGE_STYLES.length];
+                  const isSelected = pkg.id === selectedPackage?.id;
+                  return (
+                    <button
+                      key={pkg.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => setSelectedPackageId(pkg.id)}
+                      className={`w-full flex items-center gap-3 rounded-xl border px-2 py-3 text-left transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.08)] ${
+                        isSelected
+                          ? "bg-gradient-to-r from-[#FFD9D9] to-[#FFF6F6] border-[#C0445A]"
+                          : "bg-white border-stone-200"
+                      }`}
+                    >
+                      {pkg.image && (
+                        <img
+                          loading="lazy"
+                          src={pkg.image}
+                          alt={pkg.title}
+                          className="w-24 h-16 md:w-32 md:h-20 object-contain shrink-0"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0 font-body">
+                        <div className="text-[15px] md:text-[17px] font-medium text-stone-900">{pkg.title}</div>
+                        <span
+                          className={`inline-flex items-center gap-0.5 rounded-full text-[10px] md:text-[12px] px-2 py-0.5 mt-0.5 ${style.chip}`}
+                        >
+                          <PersonOutlineIcon style={{ fontSize: 13 }} />
+                          For {pkg.persons} Pitru
+                        </span>
+                        <div className={`text-[20px] md:text-[22px] font-medium leading-tight mt-0.5 ${style.price}`}>
+                          {formatPrice(pkg.price)}
+                        </div>
+                      </div>
+                      <span
+                        className={`self-start flex items-center justify-center w-4 h-4 rounded-full border shrink-0 ${
+                          isSelected ? "border-[#C0445A] bg-white" : "border-stone-300 bg-stone-100"
+                        }`}
+                      >
+                        {isSelected && <span className="w-2 h-2 rounded-full bg-[#C0445A]" />}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+        </div>
+
+        {/* FAQ */}
+        {faqs.length > 0 && (
+          <section id={sectionDomId("faq")} className="scroll-mt-28 mt-6 bg-[#FFF6E8] py-4">
+            <div className="max-w-3xl mx-auto px-3 md:px-0">
+              <SectionHeading title="Frequently Asked Questions" />
+              <div className="space-y-2.5">
+                {faqs.map((faq, index) => {
+                  const isOpen = openFaq === index;
+                  return (
+                    <div key={`${faq.question}-${index}`} className="bg-white border border-[#8D1B2E] rounded-xl overflow-hidden">
+                      <button
+                        type="button"
+                        aria-expanded={isOpen}
+                        onClick={() => setOpenFaq(isOpen ? null : index)}
+                        className="w-full flex items-center justify-between gap-2 px-2.5 py-2 text-left"
+                      >
+                        <span className="text-[12px] md:text-[14px] font-semibold text-stone-900">{faq.question}</span>
+                        <ArrowDropDownIcon
+                          style={{ fontSize: 24, color: MAROON }}
+                          className={`shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+                      {isOpen && (
+                        <div
+                          className="pitru-rich-text px-2.5 pb-2.5 text-[12px] md:text-[13px] leading-relaxed text-stone-600"
+                          dangerouslySetInnerHTML={{ __html: faq.answer }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        )}
       </div>
 
-      {/* Sticky Select Package bar */}
+      {/* Sticky bar — "Select Package" scrolls to the list; once a package is
+          picked it turns into a price summary that proceeds to booking. */}
       {packages.length > 0 && (
-        <div className="fixed bottom-0 inset-x-0 z-40 bg-transparent px-4 py-3">
+        <div className="fixed bottom-0 inset-x-0 z-40 bg-white px-3 py-2.5 shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
           <div className="max-w-3xl mx-auto">
-            <button
-              type="button"
-              onClick={() => setIsSheetOpen(true)}
-              className="w-full rounded-full bg-[#EA6A12] hover:bg-[#d55e0a] text-white font-semibold text-[15px] py-3 shadow-md transition-colors"
-            >
-              Select Package
-            </button>
+            <PujaCountdown isoDate={nextPujaDate} />
+            {selectedPackage ? (
+              <button
+                type="button"
+                onClick={handleProceed}
+                className="w-full flex items-center justify-between gap-3 rounded-xl [&:not(:first-child)]:rounded-t-none bg-[#6B0F1A] hover:bg-[#560b14] text-white px-4 py-2 text-left transition-colors"
+              >
+                <span className="min-w-0 leading-tight">
+                  <span className="block text-[17px] font-medium">{formatPrice(selectedPackage.price)}</span>
+                  <span className="block text-[12px] truncate">{selectedPackage.title}</span>
+                </span>
+                <span className="shrink-0 w-[40%] text-center text-[14px] font-medium tracking-wide">Proceed</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => scrollToSection("package")}
+                className="w-full rounded-xl [&:not(:first-child)]:rounded-t-none bg-[#6B0F1A] hover:bg-[#560b14] text-white font-medium tracking-wide text-[16px] py-3 transition-colors"
+              >
+                Select Package
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      <PackageSelectSheet
-        isOpen={isSheetOpen}
-        packages={packages}
-        selectedId={selectedPackageId || packages[0]?.id || ""}
-        onSelect={setSelectedPackageId}
-        onClose={() => setIsSheetOpen(false)}
-        onProceed={handleProceed}
-      />
-
       <Footer />
+      {/* Room for the fixed bar, so it never covers the bottom of the footer. */}
+      {packages.length > 0 && <div aria-hidden className="h-[116px]" />}
     </>
   );
 };

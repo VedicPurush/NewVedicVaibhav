@@ -1,35 +1,35 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Carousel } from "antd";
-import type { CarouselRef } from "antd/es/carousel";
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
-import { LeftOutlined, RightOutlined } from "@ant-design/icons";
+import React, { useEffect, useMemo, useState } from "react";
 import { useAllBanners } from "@/hooks/useAllBanner";
-import {
-  filterActiveBanners,
-  isExternalBannerLink,
-  normalizeBannerLink,
-} from "@/lib/banner";
+import { filterActiveBanners } from "@/lib/banner";
 import { resolveHomeBanners, type HomeBanner } from "@/lib/homeBanners";
+import BannerSlide, { useBannerNavigation } from "./bannerSlide";
 
-/** Transparent 1x1 GIF — a source the browser can "download" for free. */
-const BLANK_PIXEL =
-  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-
-interface HomepageSliderProps {
+/**
+ * Desktop hero, in two stages.
+ *
+ * Stage 1 (server HTML, and the first paint): the first banner, rendered as a
+ * plain slide. No carousel library, no JavaScript needed to show it.
+ * Stage 2 (desktop only, after hydration): the antd Carousel chunk loads and
+ * takes over, adding rotation, arrows and dots.
+ *
+ * It used to be one stage — the Carousel, statically imported. Two costs came
+ * out of that. HomePage gates this whole section to `md:block`, but `hidden` only
+ * hides, so every *phone* still downloaded, parsed and mounted 44KB of
+ * react-slick for a slider it never displays. And on desktop the LCP image could
+ * not paint until that chunk had arrived and mounted, which put a JavaScript
+ * download on the critical path to an image the server already knew the URL of.
+ *
+ * Stage 1 renders the identical <BannerSlide> the carousel will render, so the
+ * handover is invisible: same markup, same image (already decoded), same box.
+ */
+const HomepageSlider: React.FC<{
   /** Server-fetched banners, so the hero renders on the first pass. */
   initialBanners?: unknown[] | null;
-}
-
-const HomepageSlider: React.FC<HomepageSliderProps> = ({ initialBanners }) => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const router = useRouter();
-  const carouselRef = useRef<CarouselRef | null>(null);
-
+}> = ({ initialBanners }) => {
   const { data: bannersFromApi, isLoading, isError } = useAllBanners(initialBanners);
+  const onNavigate = useBannerNavigation();
 
   const visibleBanners = useMemo(
     () =>
@@ -39,25 +39,39 @@ const HomepageSlider: React.FC<HomepageSliderProps> = ({ initialBanners }) => {
     [bannersFromApi, isLoading, isError],
   );
 
-  const nextSlide = () => carouselRef.current?.next();
-  const prevSlide = () => carouselRef.current?.prev();
+  /**
+   * Whether to pull in the carousel.
+   *
+   * Starts false on the server and on the first client render, so stage 1 is
+   * what hydrates — matching the server HTML exactly, with no mismatch. The
+   * media query is read in an effect (never during render) because
+   * `window.matchMedia` does not exist on the server, and because a viewport
+   * read during render is a hydration hazard.
+   *
+   * There is nothing to rotate with a single banner, so one slide stays stage 1
+   * permanently and never fetches the chunk at all.
+   */
+  const [Carousel, setCarousel] = useState<React.ComponentType<{
+    banners: HomeBanner[];
+  }> | null>(null);
 
   useEffect(() => {
-    if (currentSlide >= visibleBanners.length) setCurrentSlide(0);
-  }, [currentSlide, visibleBanners.length]);
+    if (Carousel || visibleBanners.length <= 1) return;
+    if (!window.matchMedia("(min-width: 768px)").matches) return;
 
-  const handleNavigation = (event: React.MouseEvent, link: string) => {
-    const normalizedLink = normalizeBannerLink(link);
-    if (!normalizedLink) return;
-
-    // External links and modified clicks (new tab, etc.) keep the browser's
-    // default behaviour; only same-origin plain clicks are handled by the router.
-    if (isExternalBannerLink(normalizedLink)) return;
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-
-    event.preventDefault();
-    router.push(normalizedLink);
-  };
+    let cancelled = false;
+    import("./SliderCarousel")
+      .then((mod) => {
+        if (!cancelled) setCarousel(() => mod.default);
+      })
+      .catch(() => {
+        // Chunk failed to load — stage 1 stays up, so the hero is still a
+        // working banner with a working link, just not a rotating one.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [Carousel, visibleBanners.length]);
 
   if (isLoading) {
     // Same footprint as a rendered banner so the hero does not jump when it
@@ -71,101 +85,11 @@ const HomepageSlider: React.FC<HomepageSliderProps> = ({ initialBanners }) => {
 
   return (
     <div className="relative w-full rounded-2xl overflow-hidden">
-      <Carousel
-        ref={carouselRef}
-        autoplay
-        dots={false}
-        beforeChange={(_, next) => setCurrentSlide(next)}
-        effect="fade"
-      >
-        {visibleBanners.map((banner, index) => {
-          const href = normalizeBannerLink(banner.bannerLink) || "#";
-          const external = isExternalBannerLink(href);
-          // Only the first slide is the LCP candidate. It must not be lazy —
-          // that actively delays Largest Contentful Paint — while every other
-          // slide should stay out of the critical path.
-          const isLcpCandidate = index === 0;
-
-          return (
-            <div key={banner._id || index} className="relative w-full">
-              <a
-                href={href}
-                onClick={(event) => handleNavigation(event, banner.bannerLink)}
-                target={external ? "_blank" : undefined}
-                rel={external ? "noopener noreferrer" : undefined}
-                className="block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 rounded-2xl"
-              >
-                {/* This carousel is gated to md+ by HomePage, but `hidden`
-                    only hides — the element still mounts and still fetches its
-                    image. Phones were therefore downloading a full-size banner
-                    for a slider they never see.
-
-                    The <picture> resolves in the browser's preload scanner
-                    (before hydration), so pointing its small-screen source at an
-                    inline 1x1 pixel costs a phone nothing, while desktop still
-                    gets the real banner from the very first paint. */}
-                <picture>
-                  <source media="(max-width: 767px)" srcSet={BLANK_PIXEL} />
-                  <img
-                    src={banner.bannerWebImage}
-                    alt={banner.bannerName}
-                    loading={isLcpCandidate ? "eager" : "lazy"}
-                    fetchPriority={isLcpCandidate ? "high" : "low"}
-                    decoding={isLcpCandidate ? "sync" : "async"}
-                    className="w-full object-cover rounded-2xl"
-                  />
-                </picture>
-
-                {banner.buttonLabel && (
-                  /* A span, not a button — it navigates to the same place as the
-                     slide it sits inside, and a button nested in a link is
-                     invalid and confuses keyboard/screen-reader users.
-                     Desktop coordinates: this carousel is gated to md+ by
-                     HomePage; the mobile strip is BannerShriBankeBihariji. */
-                  <span
-                    className="absolute bg-white text-base text-orange-600 rounded-full font-semibold py-2 px-10 shadow-md transition-all duration-300 ease-in-out hover:scale-110 hover:shadow-xl"
-                    style={{
-                      top: `${banner.buttonPosition?.top ?? "0"}%`,
-                      left: `${banner.buttonPosition?.left ?? "0"}%`,
-                      transform: "translate(-50%, -50%)",
-                    }}
-                  >
-                    {banner.buttonLabel}
-                  </span>
-                )}
-              </a>
-            </div>
-          );
-        })}
-      </Carousel>
-
-      <button
-        type="button"
-        onClick={prevSlide}
-        aria-label="Previous banner"
-        className="absolute hidden md:block top-1/2 left-4 transform -translate-y-1/2 text-white bg-black bg-opacity-20 hover:bg-opacity-50 p-2 rounded-full transition z-10"
-      >
-        <LeftOutlined />
-      </button>
-      <button
-        type="button"
-        onClick={nextSlide}
-        aria-label="Next banner"
-        className="absolute top-1/2 hidden md:block right-4 transform -translate-y-1/2 text-white bg-black bg-opacity-20 hover:bg-opacity-50 p-2 rounded-full transition z-10"
-      >
-        <RightOutlined />
-      </button>
-
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-        {visibleBanners.map((_, index) => (
-          <div
-            key={index}
-            className={`h-2 w-2 rounded-full transition-all ${
-              index === currentSlide ? "bg-white" : "bg-gray-400 opacity-50"
-            }`}
-          />
-        ))}
-      </div>
+      {Carousel ? (
+        <Carousel banners={visibleBanners} />
+      ) : (
+        <BannerSlide banner={visibleBanners[0]} index={0} onNavigate={onNavigate} />
+      )}
     </div>
   );
 };
