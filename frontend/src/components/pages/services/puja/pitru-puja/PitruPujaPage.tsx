@@ -245,10 +245,10 @@ const PitruPujaPage: React.FC<PitruPujaPageProps> = ({ serverPuja, pujaId }) => 
       <Navbar activeIndex="puja" />
 
       <div className="bg-white pt-[6vh]">
-        <div className="max-w-3xl mx-auto px-3 md:px-0">
+        <div className="max-w-3xl mx-auto px-3 md:px-0 mt-2">
           {/* Banner */}
           {bannerImage && (
-            <div className="rounded-md overflow-hidden">
+            <div className="rounded-[18px] md:rounded-[24px] overflow-hidden">
               <img
                 loading="eager"
                 fetchPriority="high"
@@ -256,7 +256,7 @@ const PitruPujaPage: React.FC<PitruPujaPageProps> = ({ serverPuja, pujaId }) => 
                 height={196}
                 src={bannerImage}
                 alt={pitruPuja.pujaName}
-                className="w-full h-[196px] md:h-[320px] object-cover bg-[#D9D9D9]"
+                className="w-full h-[186px] md:h-[320px] object-cover bg-[#D9D9D9]"
               />
             </div>
           )}
