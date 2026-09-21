@@ -176,7 +176,7 @@ function doGTranslate(lang_pair) {
 }`;
 
 const FONTS_HREF =
-  "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600&family=Open+Sans:wght@400;500;600&family=Montserrat:wght@400;500;600&family=Baloo+2:wght@400;500;600;700;800&family=Marcellus&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=Kurale&display=swap";
+  "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600&family=Open+Sans:wght@400;500;600&family=Montserrat:wght@400;500;600&family=Baloo+2:wght@400;500;600;700;800&family=Marcellus&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=Kurale&family=Secular+One&display=swap";
 
 /**
  * Creates the font stylesheet link and flips it from media="print" (parsed, not

@@ -304,7 +304,10 @@ const PitruPujaPage: React.FC<PitruPujaPageProps> = ({ serverPuja, pujaId }) => 
           )}
 
           {/* Title + subtitle + reason */}
-          <h1 className="font-heading font-bold text-[24px] min-[360px]:text-[26px] md:text-[34px] leading-[1.15] text-[#7A0F1F] mt-3 break-words">
+          <h1
+            className="font-bold text-[24px] min-[360px]:text-[26px] md:text-[34px] leading-[1.15] text-[#7A0F1F] mt-3 break-words"
+            style={{ fontFamily: "'Secular One', sans-serif" }}
+          >
             {pitruPuja.pujaName}
           </h1>
           {pitruPuja.subName && (
