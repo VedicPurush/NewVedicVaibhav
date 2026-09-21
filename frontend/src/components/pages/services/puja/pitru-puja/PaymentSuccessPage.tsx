@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import { fbqTrack } from "@/lib/meta-pixel";
+import { shouldTrackPurchase } from "@/lib/purchase-tracking";
+import { pitruPurchaseEventId } from "./constants";
 
 interface SuccessState {
   orderId?: string;
@@ -23,12 +26,38 @@ const PaymentSuccessPage: React.FC = () => {
   const [state, setState] = useState<SuccessState | null>(null);
 
   useEffect(() => {
+    let booking: SuccessState = {};
     try {
       const raw = sessionStorage.getItem("pitruPujaSuccessState");
-      if (raw) setState(JSON.parse(raw));
+      if (raw) {
+        booking = JSON.parse(raw) as SuccessState;
+        setState(booking);
+      }
     } catch {
       // ignore — falls back to generic confirmation copy below
     }
+
+    // Meta Purchase. `shouldTrackPurchase` refuses a page opened without a real
+    // booking behind it (a refresh, a bookmark, a crawler) and remembers the
+    // order, so the value can never be reported twice from the browser.
+    const orderId = String(booking.orderId ?? "");
+    const amount = Number(booking.price) || 0;
+    if (!shouldTrackPurchase(orderId, amount)) return;
+
+    // The eventID is the one the backend's Conversions API event carries for
+    // this same booking, so Meta collapses the two into one conversion.
+    fbqTrack(
+      "Purchase",
+      {
+        content_ids: [orderId],
+        content_name: booking.packageTitle || "Pitru Puja",
+        content_category: "Pitru Puja",
+        content_type: "product",
+        value: amount,
+        currency: "INR",
+      },
+      { eventID: pitruPurchaseEventId(orderId) },
+    );
   }, []);
 
   return (

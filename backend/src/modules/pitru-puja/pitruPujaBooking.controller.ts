@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import PitruPujaBooking from "./pitruPujaBooking.model";
+import PitruPujaBooking, { type IPitruPujaBooking } from "./pitruPujaBooking.model";
 import { phoneDigits } from "./pitruPujaBooking.profile";
 import PendingPitruPujaBooking from "./pendingPitruPujaBooking.model";
 import PitruPuja from "./pitruPuja.model";
@@ -10,8 +10,75 @@ import { env } from "../../config/env";
 import { logger } from "../../lib/logger";
 import { ApiError } from "../../lib/apiError";
 import { resolvePromo } from "../promo/promo.service";
+import { sendMetaPurchaseEvent } from "../../utils/metaCapi";
 
 const istDay = (date: Date) => date.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+
+/**
+ * Prefix for the Meta purchase `event_id`.
+ *
+ * The browser sends the same id with its own `Purchase` pixel event (see
+ * `pitruPurchaseEventId` in the frontend's pitru-puja/constants.ts) so Meta
+ * deduplicates the pair into a single conversion. Change both together.
+ */
+const PURCHASE_EVENT_ID_PREFIX = "pitru_purchase_";
+
+/**
+ * Meta attribution carried on the devotee's own request.
+ *
+ * Read inline here, as the other booking modules do, rather than shared: these
+ * headers are already on the CORS allow-list in app.ts.
+ */
+const clientMetaOf = (req: Request) => ({
+  clientIp:
+    String(req.headers["x-forwarded-for"] || "")
+      .split(",")[0]
+      ?.trim() ||
+    req.socket?.remoteAddress ||
+    undefined,
+  userAgent: (req.headers["user-agent"] as string) || undefined,
+  fbp: (req.headers["x-fbp"] as string) || undefined,
+  fbc: (req.headers["x-fbc"] as string) || undefined,
+  eventSourceUrl: (req.headers["x-event-source-url"] as string) || undefined,
+});
+
+/**
+ * Meta CAPI Purchase for a booking that has just been confirmed.
+ *
+ * Best-effort and self-contained: it swallows its own failures, because a
+ * devotee who has paid must never see an error over an analytics call.
+ *
+ * Attribution comes off the booking, not off the confirming request — the
+ * Razorpay webhook can be what confirms a booking, and it carries none of the
+ * devotee's headers. Call this exactly once per booking: the callers guard it
+ * behind an atomic `paymentStatus` flip so the browser and the webhook racing
+ * each other cannot both report the same sale.
+ */
+const sendPitruPujaPurchase = async (booking: IPitruPujaBooking): Promise<void> => {
+  try {
+    await sendMetaPurchaseEvent({
+      // The booking's own orderId (VVPP…), which is also what the browser puts
+      // in its event id — not the Razorpay order id.
+      orderID: booking.orderId,
+      // `price` is the amount actually charged: markUpInr() has already been
+      // applied for international cards, and it is in INR either way.
+      value: Number(booking.price || 0),
+      currency: "INR",
+      contentId: booking.pujaId || "PITRU_PUJA",
+      deliveryCategory: "home_delivery",
+      actionSource: "website",
+      phone: booking.whatsappNumber || null,
+      clientIp: booking.clientIp ?? null,
+      userAgent: booking.userAgent ?? null,
+      fbp: booking.fbp ?? null,
+      fbc: booking.fbc ?? null,
+      eventSourceUrl: booking.eventSourceUrl ?? null,
+      eventIdPrefix: PURCHASE_EVENT_ID_PREFIX,
+    });
+  } catch (err) {
+    logger.error({ err, orderId: booking.orderId }, "[MetaCAPI][PitruPuja] Purchase failed");
+  }
+};
 
 /**
  * The date being booked: the earliest puja date that is today or later (IST),
@@ -102,6 +169,9 @@ export const createPitruPujaBooking = async (req: Request, res: Response): Promi
     poojaDate: mandirDateIso,
     orderId,
     paymentStatus: false,
+    // Captured here, at the one point in the flow that is guaranteed to be the
+    // devotee's own browser, and replayed on the purchase event at confirmation.
+    ...clientMetaOf(req),
   });
 
   await booking.save();
@@ -182,12 +252,22 @@ export const verifyPitruPujaPayment = async (req: Request, res: Response): Promi
   const booking = await PitruPujaBooking.findOne({ orderId: String(orderId) });
   if (!booking) throw ApiError.notFound("Booking not found.");
 
-  if (!booking.paymentStatus) {
-    booking.paymentStatus = true;
-    booking.transactionID = String(razorpay_payment_id);
-    booking.paymentDate = new Date();
-    await booking.save();
-    await PendingPitruPujaBooking.deleteOne({ orderId: booking.orderId });
+  // One atomic flip instead of read-then-save: the Razorpay webhook races this
+  // handler whenever the browser is slow to call back, and both could otherwise
+  // read `paymentStatus: false` and each report the sale to Meta. Only the
+  // caller whose update matched gets a document back.
+  const confirmed = await PitruPujaBooking.findOneAndUpdate(
+    { _id: booking._id, paymentStatus: false },
+    {
+      paymentStatus: true,
+      transactionID: String(razorpay_payment_id),
+      paymentDate: new Date(),
+    },
+    { new: true },
+  );
+
+  if (confirmed) {
+    await PendingPitruPujaBooking.deleteOne({ orderId: confirmed.orderId });
   }
 
   res.status(200).json({
@@ -196,6 +276,12 @@ export const verifyPitruPujaPayment = async (req: Request, res: Response): Promi
     bookingId: booking._id,
     orderId: booking.orderId,
   });
+
+  // Deliberately after the response and deliberately not awaited: metaCapi
+  // allows itself 12s, and this endpoint runs inside the checkout's 20s budget,
+  // so awaiting a slow Meta call here could time out a payment the devotee has
+  // already made and show them a failure.
+  if (confirmed) void sendPitruPujaPurchase(confirmed);
 };
 
 /**
@@ -235,14 +321,25 @@ export const handlePitruPujaWebhook = async (req: Request, res: Response): Promi
       const paymentId = paymentEntity?.id;
 
       if (razorpayOrderId) {
-        const booking = await PitruPujaBooking.findOne({ razorpayOrderId });
-        if (booking && !booking.paymentStatus) {
-          booking.paymentStatus = true;
-          booking.transactionID = paymentId || "";
-          booking.paymentDate = new Date();
-          await booking.save();
-          await PendingPitruPujaBooking.deleteOne({ orderId: booking.orderId });
-        } else if (!booking) {
+        // Same atomic flip as the browser verify path — whichever of the two
+        // gets here first is the one that reports the purchase to Meta.
+        const confirmed = await PitruPujaBooking.findOneAndUpdate(
+          { razorpayOrderId, paymentStatus: false },
+          {
+            paymentStatus: true,
+            transactionID: paymentId || "",
+            paymentDate: new Date(),
+          },
+          { new: true },
+        );
+
+        if (confirmed) {
+          await PendingPitruPujaBooking.deleteOne({ orderId: confirmed.orderId });
+          // Awaited here, unlike the verify path: nothing is waiting on this
+          // response but Razorpay, and the handler must not finish before the
+          // event is sent.
+          await sendPitruPujaPurchase(confirmed);
+        } else if (!(await PitruPujaBooking.exists({ razorpayOrderId }))) {
           logger.warn(`[PitruPuja Webhook] Booking not found for razorpayOrderId: ${razorpayOrderId}`);
         }
       }

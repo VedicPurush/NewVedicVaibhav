@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import TempleHinduIcon from "@mui/icons-material/TempleHindu";
 import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
@@ -15,6 +15,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Loadinggif from "@/components/shared/LoadingGif";
 import { usePitruPujaQuery } from "@/hooks/queries/usePitruPujaQueries";
+import { fbqTrack } from "@/lib/meta-pixel";
 import { pitruPujaHref } from "./constants";
 import PujaCountdown from "./PujaCountdown";
 import {
@@ -170,6 +171,28 @@ const PitruPujaPage: React.FC<PitruPujaPageProps> = ({ serverPuja, pujaId }) => 
   // server copy; the cache only fills in when the server fetch failed, and the
   // loading GIF only shows while that fallback query is still in flight.
   const pitruPuja = serverPuja ?? data;
+
+  // Meta ViewContent — the top of this funnel. Declared above the loading early
+  // return so the hook order stays stable, and it no-ops until the puja
+  // document has actually arrived. The ref keeps it to one event per puja: the
+  // cache fallback can hand back a fresh object reference on a later render.
+  const viewTrackedRef = useRef("");
+  useEffect(() => {
+    if (!pitruPuja || viewTrackedRef.current === pitruPuja.pujaId) return;
+    viewTrackedRef.current = pitruPuja.pujaId;
+
+    const prices = pitruPuja.packages.map((pkg) => pkg.price).filter((price) => Number.isFinite(price));
+
+    fbqTrack("ViewContent", {
+      content_ids: [pitruPuja.pujaId],
+      content_name: pitruPuja.pujaName,
+      content_category: "Pitru Puja",
+      content_type: "product",
+      // Cheapest package: the price a visitor is being shown an entry point to.
+      ...(prices.length ? { value: Math.min(...prices), currency: "INR" } : {}),
+    });
+  }, [pitruPuja]);
+
   if (!pitruPuja) return <Loadinggif />;
 
   const packages: PujaPackage[] = pitruPuja.packages.map((pkg, index) => ({

@@ -18,6 +18,7 @@ import { validatePromo, type AppliedPromo, type PromoCode } from "@/lib/api/prom
 import { api } from "@/lib/api";
 import { orderRequestFields } from "@/lib/currency";
 import { verifyPaymentWithRetry } from "@/lib/verify-payment";
+import { fbqTrack, metaHeaders } from "@/lib/meta-pixel";
 import { pitruPujaHref } from "./constants";
 
 const KASHYAP_GOTRA = "Kashyap";
@@ -278,17 +279,35 @@ const EnterPujaDetailsPage: React.FC<EnterPujaDetailsPageProps> = ({ pujaId }) =
     setFormError("");
     setIsSubmitting(true);
 
+    fbqTrack("InitiateCheckout", {
+      content_ids: [pujaId],
+      content_name: packageTitle || "Pitru Puja",
+      content_category: "Pitru Puja",
+      content_type: "product",
+      num_items: ancestorNames.length,
+      value: payableAmount,
+      currency: "INR",
+    });
+
     try {
-      const { data: createData } = await api.post("/create-pitru-puja-booking", {
-        pujaId,
-        packageLabel: packageTitle,
-        whatsappNumber: whatsappNumber.trim(),
-        ...(hasDifferentCallingNumber ? { callingNumber: callingNumber.trim() } : {}),
-        kartaName: kartaName.trim(),
-        kartaGotra: kartaGotra.trim(),
-        ancestorNames: ancestorNames.map((n) => `Late ${n.trim()}`),
-        ...(appliedPromo ? { promoCode: appliedPromo.promoName } : {}),
-      });
+      // `metaHeaders()` travels with the create call specifically: the backend
+      // stores this visitor's fbp/fbc on the booking there, and replays them on
+      // the Conversions API purchase event once payment is confirmed — which may
+      // happen on the Razorpay webhook, where no browser headers exist.
+      const { data: createData } = await api.post(
+        "/create-pitru-puja-booking",
+        {
+          pujaId,
+          packageLabel: packageTitle,
+          whatsappNumber: whatsappNumber.trim(),
+          ...(hasDifferentCallingNumber ? { callingNumber: callingNumber.trim() } : {}),
+          kartaName: kartaName.trim(),
+          kartaGotra: kartaGotra.trim(),
+          ancestorNames: ancestorNames.map((n) => `Late ${n.trim()}`),
+          ...(appliedPromo ? { promoCode: appliedPromo.promoName } : {}),
+        },
+        { headers: metaHeaders() },
+      );
 
       const orderIdInternal: string = createData.booking.orderId;
 

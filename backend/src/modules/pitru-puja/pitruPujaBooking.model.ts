@@ -25,6 +25,19 @@ export interface IPitruPujaBooking extends Document, IInternationalFields {
   paymentStatus: boolean;
   transactionID?: string;
   paymentDate?: Date | null;
+  /**
+   * Meta attribution, captured from the devotee's browser when the booking is
+   * created and replayed on the Conversions API purchase event.
+   *
+   * Stored rather than read off the confirming request because a booking can be
+   * confirmed by the Razorpay webhook instead of the browser — that is a
+   * server-to-server call carrying none of these.
+   */
+  fbp?: string;
+  fbc?: string;
+  clientIp?: string;
+  userAgent?: string;
+  eventSourceUrl?: string;
   /** Supplied by `timestamps: true` below; declared so readers can use them. */
   createdAt?: Date;
   updatedAt?: Date;
@@ -54,6 +67,13 @@ const pitruPujaBookingSchema = new Schema<IPitruPujaBooking>(
     paymentStatus: { type: Boolean, default: false },
     transactionID: { type: String },
     paymentDate: { type: Date, default: null },
+
+    /* Meta tracking */
+    fbp: { type: String },
+    fbc: { type: String },
+    clientIp: { type: String },
+    userAgent: { type: String },
+    eventSourceUrl: { type: String },
   },
   { timestamps: true },
 );
