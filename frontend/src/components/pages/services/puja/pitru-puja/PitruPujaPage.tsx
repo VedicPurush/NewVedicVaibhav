@@ -3,7 +3,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import TempleHinduIcon from "@mui/icons-material/TempleHindu";
-import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
 import NightsStayIcon from "@mui/icons-material/NightsStay";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import OndemandVideoOutlinedIcon from "@mui/icons-material/OndemandVideoOutlined";
@@ -28,7 +27,7 @@ import {
 
 const MAROON = "#8E1529";
 
-const BADGE_ICONS = [ReportProblemOutlinedIcon, NightsStayIcon];
+const BADGE_ICONS = [TempleHinduIcon, NightsStayIcon];
 const BADGE_STYLES = [
   "bg-[#FDE9D3] text-[#E0701F] border border-[#F2B27A]",
   "bg-[#262F7E] text-white border border-[#262F7E]",
