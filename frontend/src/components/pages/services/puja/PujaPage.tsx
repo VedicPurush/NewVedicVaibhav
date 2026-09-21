@@ -14,8 +14,8 @@ import PujaListHero, { type PujaSortKey } from "./list/PujaListHero";
 import PujaGridCard from "./list/PujaGridCard";
 import PujaListCard from "./list/PujaListCard";
 import { getPujaBadge } from "./list/badgePresets";
-import { usePitruPujaQuery } from "@/hooks/queries/usePitruPujaQueries";
-import { PITRU_PUJA_ID } from "./pitru-puja/constants";
+import { usePitruPujasQuery } from "@/hooks/queries/usePitruPujaQueries";
+import { pitruPujaHref } from "./pitru-puja/constants";
 import { getNextPitruPujaDate, type PitruPuja } from "@/lib/api/pitruPuja.api";
 
 const PujaPage = () => {
@@ -161,9 +161,7 @@ const getPujaEarliestDateTime = (puja: Puja) => {
   return isNaN(d.getTime()) ? null : d;
 };
 
-const PITRU_PUJA_HREF = "/services/puja/pitru-dosh-shanti-puja";
-
-/** Projects the Pitru Dosh Shanti puja into the listing's card shape. */
+/** Projects one Pitru Dosh Shanti puja into the listing's card shape. */
 const pitruPujaToListing = (pitru: PitruPuja): Puja => {
   const prices = pitru.packages.map((pkg) => pkg.price).filter((price) => Number.isFinite(price));
   const lowestPrice = prices.length ? Math.min(...prices) : 0;
@@ -193,7 +191,7 @@ const pitruPujaToListing = (pitru: PitruPuja): Puja => {
     isExclusive: false,
     createdAt: pitru.createdAt ?? new Date(0).toISOString(),
     source: "pitru",
-    href: PITRU_PUJA_HREF,
+    href: pitruPujaHref(pitru.pujaId),
   } as Puja;
 };
 
@@ -271,7 +269,7 @@ const PujaContent: React.FC = () => {
   } = useCombinedPoojasQuery(); // legacy `poojas` + new `newpoojas`
   // Lives in its own collection with its own landing page; a failed fetch just
   // leaves it out of the list rather than failing the whole page.
-  const { data: pitruPuja } = usePitruPujaQuery(PITRU_PUJA_ID);
+  const { data: pitruPujas } = usePitruPujasQuery();
 
   useEffect(() => {
     const tab = searchParams?.get("tab");
@@ -329,7 +327,9 @@ const PujaContent: React.FC = () => {
       poojaDescription: stripHtml(puja.poojaDescription),
     };
   });
-  if (pitruPuja?.isActive) pujaData.push(pitruPujaToListing(pitruPuja));
+  for (const pitru of pitruPujas ?? []) {
+    if (pitru.isActive) pujaData.push(pitruPujaToListing(pitru));
+  }
 
   // One shared request for every active mandir (cached ~30min, reused across
   // every page that needs a mandir name) instead of a separate round trip per

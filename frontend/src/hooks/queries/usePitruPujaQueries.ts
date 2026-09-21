@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useIsRestoring, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchPitruPujaByPujaId, type PitruPuja } from "@/lib/api/pitruPuja.api";
+import { fetchAllPitruPujas, fetchPitruPujaByPujaId, type PitruPuja } from "@/lib/api/pitruPuja.api";
 
 const pitruPujaKey = (pujaId: string) => ["pitruPuja", "detail", pujaId] as const;
 
@@ -38,5 +38,32 @@ export const usePitruPujaQuery = (pujaId: string, serverPuja?: PitruPuja | null)
     enabled: !!pujaId,
     staleTime: 60 * 1000,
     ...(serverPuja ? { initialData: serverPuja } : {}),
+  });
+};
+
+const pitruPujaListKey = ["pitruPuja", "list"] as const;
+
+/**
+ * Every active pitru puja, for the callers that list them.
+ *
+ * `serverPujas` is written over the cache for the same reason the detail query
+ * does it: this cache is persisted to IndexedDB, so a list saved before an
+ * admin added a puja would otherwise outlive it and keep the new puja hidden.
+ */
+export const usePitruPujasQuery = (serverPujas?: PitruPuja[] | null) => {
+  const queryClient = useQueryClient();
+  const isRestoring = useIsRestoring();
+
+  useEffect(() => {
+    if (!serverPujas || isRestoring) return;
+    const timer = setTimeout(() => queryClient.setQueryData(pitruPujaListKey, serverPujas), 0);
+    return () => clearTimeout(timer);
+  }, [queryClient, serverPujas, isRestoring]);
+
+  return useQuery({
+    queryKey: pitruPujaListKey,
+    queryFn: fetchAllPitruPujas,
+    staleTime: 60 * 1000,
+    ...(serverPujas ? { initialData: serverPujas } : {}),
   });
 };

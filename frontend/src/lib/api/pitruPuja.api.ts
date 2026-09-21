@@ -73,3 +73,19 @@ export const fetchPitruPujaByPujaId = async (pujaId: string): Promise<PitruPuja 
   // lib/imageUrl.ts for the measured difference.
   return withCdnUrls(res.data?.pitruPuja ?? null);
 };
+
+/**
+ * Every active pitru puja.
+ *
+ * Callers that list pujas (the homepage strip, the /services/puja listing) use
+ * this rather than requesting one hardcoded id — the collection holds more than
+ * one puja and every one of them should appear.
+ *
+ * A failure here is not fatal for those callers: the pitru pujas are one source
+ * among several in both lists, so an empty array simply leaves them out.
+ */
+export const fetchAllPitruPujas = async (): Promise<PitruPuja[]> => {
+  const res = await api.get("/fetch-pitru-pujas");
+  const pujas = res.data?.pitruPujas;
+  return Array.isArray(pujas) ? withCdnUrls(pujas) : [];
+};

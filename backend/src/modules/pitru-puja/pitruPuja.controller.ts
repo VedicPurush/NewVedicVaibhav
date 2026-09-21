@@ -10,3 +10,16 @@ export const fetchPitruPujaByPujaId = async (req: Request, res: Response) => {
   }
   return res.status(200).json({ pitruPuja });
 };
+
+/**
+ * API to fetch every active pitru puja.
+ *
+ * The listing and homepage used to request one hardcoded pujaId, so a second
+ * puja in this collection was never fetched by anything. They now read this.
+ * An empty collection is a 200 with an empty array — "nothing scheduled" is a
+ * normal state for the callers, not an error.
+ */
+export const fetchAllPitruPujas = async (_req: Request, res: Response) => {
+  const pitruPujas = await PitruPuja.find({ isActive: true }).sort({ createdAt: -1 }).lean();
+  return res.status(200).json({ pitruPujas });
+};

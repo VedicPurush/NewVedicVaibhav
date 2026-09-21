@@ -33,3 +33,15 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+/**
+ * True only when a failed request was the backend answering "no such record"
+ * (404) — not a timeout, a network error or a 5xx.
+ *
+ * Pages that turn a missing record into a real 404 must make this distinction.
+ * During an outage every lookup fails, and treating that as "missing" would
+ * serve 404s for pages that exist, which is how a brief outage turns into
+ * search engines dropping real URLs.
+ */
+export const isNotFoundResponse = (error: unknown): boolean =>
+  axios.isAxiosError(error) && error.response?.status === 404;

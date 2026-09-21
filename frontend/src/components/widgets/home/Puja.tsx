@@ -11,8 +11,8 @@ import { useCombinedPoojasQuery } from "@/hooks/useAllPoojas";
 import { fetchAnyPoojaById } from "@/lib/api/puja.api";
 import { PUJA_KEYS } from "@/lib/query-keys/puja.keys";
 import { useActiveMandirsQuery } from "@/hooks/queries/useMandirQueries";
-import { usePitruPujaQuery } from "@/hooks/queries/usePitruPujaQueries";
-import { PITRU_PUJA_ID } from "@/components/pages/services/puja/pitru-puja/constants";
+import { usePitruPujasQuery } from "@/hooks/queries/usePitruPujaQueries";
+import { pitruPujaHref } from "@/components/pages/services/puja/pitru-puja/constants";
 import { getNextPitruPujaDate, type PitruPuja } from "@/lib/api/pitruPuja.api";
 
 const MAX_CARDS = 6;
@@ -92,7 +92,7 @@ const soonestUpcoming = (dates: any[]): string => {
   return upcoming.length ? upcoming[0].toISOString() : "";
 };
 
-/** Projects the Pitru Dosh Shanti puja into this widget's card shape. */
+/** Projects one Pitru Dosh Shanti puja into this widget's card shape. */
 const pitruPujaToItem = (pitru: PitruPuja): PujaItem => {
   const prices = pitru.packages.map((pkg) => pkg.price).filter((price) => Number.isFinite(price));
   const lowestPrice = prices.length ? Math.min(...prices) : 0;
@@ -118,7 +118,7 @@ const pitruPujaToItem = (pitru: PitruPuja): PujaItem => {
     isExclusive: false,
     isFeatured: false,
     source: "pitru",
-    href: "/services/puja/pitru-dosh-shanti-puja",
+    href: pitruPujaHref(pitru.pujaId),
   } as PujaItem;
 };
 
@@ -195,7 +195,7 @@ export default function Puja({ initialPoojas, initialMandirs }: PujaProps) {
   // Separate collection, client-only: the server HTML never includes it, so it
   // joins the list only after hydration (see `hydrated` above). A failed fetch
   // simply leaves it out.
-  const { data: pitruPuja } = usePitruPujaQuery(PITRU_PUJA_ID);
+  const { data: pitruPujas } = usePitruPujasQuery();
 
   const prefetchPujaDetail = useCallback(
     (pujaId: string) => {
@@ -236,9 +236,13 @@ export default function Puja({ initialPoojas, initialMandirs }: PujaProps) {
         ],
       };
     });
-    if (hydrated && pitruPuja?.isActive) items.push(pitruPujaToItem(pitruPuja));
+    if (hydrated) {
+      for (const pitru of pitruPujas ?? []) {
+        if (pitru.isActive) items.push(pitruPujaToItem(pitru));
+      }
+    }
     return items;
-  }, [sourcePoojas, hydrated, pitruPuja]);
+  }, [sourcePoojas, hydrated, pitruPujas]);
 
   // One shared, cached request for every active mandir instead of a separate
   // round trip per unique mandir id — that fan-out (and gating render on all

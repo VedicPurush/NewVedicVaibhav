@@ -15,7 +15,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Loadinggif from "@/components/shared/LoadingGif";
 import { usePitruPujaQuery } from "@/hooks/queries/usePitruPujaQueries";
-import { PITRU_PUJA_ID } from "./constants";
+import { pitruPujaHref } from "./constants";
 import PujaCountdown from "./PujaCountdown";
 import {
   getNextPitruPujaDate,
@@ -151,16 +151,18 @@ interface PitruPujaPageProps {
   /** Fetched on the server (see lib/server/pitruPujaData.ts) so the first render
    *  already has the banner and copy instead of a loading GIF. */
   serverPuja?: PitruPuja | null;
+  /** Which puja this route is for — the document's own unique id. */
+  pujaId: string;
 }
 
-const PitruPujaPage: React.FC<PitruPujaPageProps> = ({ serverPuja }) => {
+const PitruPujaPage: React.FC<PitruPujaPageProps> = ({ serverPuja, pujaId }) => {
   const [activeSection, setActiveSection] = useState<SectionKey>("about");
   const [selectedPackageId, setSelectedPackageId] = useState("");
   const [expandedBenefits, setExpandedBenefits] = useState<Set<number>>(new Set());
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const router = useRouter();
 
-  const { data } = usePitruPujaQuery(PITRU_PUJA_ID, serverPuja);
+  const { data } = usePitruPujaQuery(pujaId, serverPuja);
 
   // `initialData` is ignored whenever the cache already holds this key, so a copy
   // restored from IndexedDB — possibly empty, or older than the latest admin
@@ -219,7 +221,7 @@ const PitruPujaPage: React.FC<PitruPujaPageProps> = ({ serverPuja }) => {
       ...(pitruPuja.mandirPlace ? { mandirPlace: pitruPuja.mandirPlace } : {}),
       ...(selectedPackage.image ? { image: selectedPackage.image } : {}),
     });
-    router.push(`/services/puja/pitru-dosh-shanti-puja/book?${params.toString()}`);
+    router.push(`${pitruPujaHref(pujaId)}/book?${params.toString()}`);
   };
 
   return (

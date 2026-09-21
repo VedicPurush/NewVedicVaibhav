@@ -18,7 +18,7 @@ import { validatePromo, type AppliedPromo, type PromoCode } from "@/lib/api/prom
 import { api } from "@/lib/api";
 import { orderRequestFields } from "@/lib/currency";
 import { verifyPaymentWithRetry } from "@/lib/verify-payment";
-import { PITRU_PUJA_ID } from "./constants";
+import { pitruPujaHref } from "./constants";
 
 const KASHYAP_GOTRA = "Kashyap";
 
@@ -125,7 +125,12 @@ const FieldError: React.FC<{ fieldKey: string; message?: string }> = ({ fieldKey
     </p>
   ) : null;
 
-const EnterPujaDetailsPage: React.FC = () => {
+interface EnterPujaDetailsPageProps {
+  /** Which puja is being booked — the document's own unique id, from the route. */
+  pujaId: string;
+}
+
+const EnterPujaDetailsPage: React.FC<EnterPujaDetailsPageProps> = ({ pujaId }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -275,7 +280,7 @@ const EnterPujaDetailsPage: React.FC = () => {
 
     try {
       const { data: createData } = await api.post("/create-pitru-puja-booking", {
-        pujaId: PITRU_PUJA_ID,
+        pujaId,
         packageLabel: packageTitle,
         whatsappNumber: whatsappNumber.trim(),
         ...(hasDifferentCallingNumber ? { callingNumber: callingNumber.trim() } : {}),
@@ -352,7 +357,7 @@ const EnterPujaDetailsPage: React.FC = () => {
             // success page falls back to generic copy when it's empty.
           }
 
-          router.push("/services/puja/pitru-dosh-shanti-puja/payment-success");
+          router.push(`${pitruPujaHref(pujaId)}/payment-success`);
         },
         modal: {
           ondismiss: () => setIsSubmitting(false),
