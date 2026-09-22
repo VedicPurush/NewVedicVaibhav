@@ -459,7 +459,10 @@ const ChadhavaBookings = () => {
                 bookingDate={b.bookingDate ?? "N/A"}
                 gotra={b.gotra ?? "N/A"}
                 accessories={buildAccessoriesForCard(b) as any}
-                videoUrl={byOrderId.get(orderKey(b.orderID))?.videoUrl}
+                videoUrl={byOrderId.get(orderKey(b.orderID))?.videoUrl || undefined}
+                videoComingSoon={
+                  byOrderId.get(orderKey(b.orderID))?.status === "coming_soon"
+                }
               />
             </Col>
           );

@@ -77,18 +77,26 @@ const VideoCard: React.FC<{ video: ServiceVideo; onPlay: () => void }> = ({ vide
   const parsed = parseVideoLink(video.videoUrl, video.pujaTitle || "Your video");
   const title = video.pujaTitle || `${serviceLabel(video.service)} Video`;
   const date = formatDate(video.pujaDate) || formatDate(video.createdAt);
+  const ready = video.status === "ready";
+
+  /* A card with nothing to play must not look or behave like a button: no
+     click handler, no play glyph, and a <div> so it is not in the tab order
+     and screen readers do not announce it as actionable. */
+  const Tag = ready ? "button" : "div";
 
   return (
-    <button
-      type="button"
-      onClick={onPlay}
-      className="group text-left bg-white rounded-2xl overflow-hidden border border-black/5
-                 shadow-sm hover:shadow-lg transition-shadow focus:outline-none
-                 focus:ring-2 focus:ring-orange-500 w-full"
+    <Tag
+      {...(ready ? ({ type: "button", onClick: onPlay } as const) : {})}
+      className={`group text-left bg-white rounded-2xl overflow-hidden border border-black/5
+                  shadow-sm w-full ${
+                    ready
+                      ? "hover:shadow-lg transition-shadow focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      : ""
+                  }`}
     >
       {/* Portrait frame, because that is how these reels are shot. */}
       <div className="relative w-full bg-neutral-900" style={{ aspectRatio: "3 / 4" }}>
-        {parsed.thumbUrl && !imgFailed ? (
+        {ready && parsed.thumbUrl && !imgFailed ? (
           <img
             loading="lazy"
             src={parsed.thumbUrl}
@@ -108,15 +116,24 @@ const VideoCard: React.FC<{ video: ServiceVideo; onPlay: () => void }> = ({ vide
           {serviceLabel(video.service)}
         </span>
 
-        <span
-          className="absolute inset-0 m-auto w-14 h-14 rounded-full bg-white/25 backdrop-blur-sm
-                     border border-white/50 flex items-center justify-center
-                     group-hover:scale-105 transition-transform"
-        >
-          <svg className="w-6 h-6 text-white translate-x-[2px]" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z" />
-          </svg>
-        </span>
+        {ready ? (
+          <span
+            className="absolute inset-0 m-auto w-14 h-14 rounded-full bg-white/25 backdrop-blur-sm
+                       border border-white/50 flex items-center justify-center
+                       group-hover:scale-105 transition-transform"
+          >
+            <svg className="w-6 h-6 text-white translate-x-[2px]" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </span>
+        ) : (
+          <span
+            className="absolute inset-x-3 top-1/2 -translate-y-1/2 text-center text-white
+                       text-[12px] font-semibold leading-snug"
+          >
+            <span className="block mt-1.5">Your video is coming soon</span>
+          </span>
+        )}
 
         {date && (
           <span className="absolute bottom-2.5 left-3 right-3 text-white/90 text-[11px]">{date}</span>
@@ -134,7 +151,7 @@ const VideoCard: React.FC<{ video: ServiceVideo; onPlay: () => void }> = ({ vide
           Order ID: {video.orderId || "N/A"}
         </div>
       </div>
-    </button>
+    </Tag>
   );
 };
 
@@ -161,6 +178,7 @@ const MyVideos = () => {
   const { videos, isFetching, isError } = useServiceVideosQuery(submitted || undefined, "all");
   const searching = Boolean(submitted) && isFetching;
   const hasSearched = Boolean(submitted) && !isFetching && !isError;
+  const pendingCount = videos.filter((v) => v.status !== "ready").length;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -276,8 +294,12 @@ const MyVideos = () => {
             <h2 className="text-[16px] font-semibold text-neutral-800">
               {videos.length} {videos.length === 1 ? "video" : "videos"} found
             </h2>
+            {/* The count includes rows whose link is not in yet, so say so
+                rather than let "N videos found" promise N watchable videos. */}
             <p className="text-[12.5px] text-neutral-500 mt-0.5 mb-4">
               Tap any video to watch it. Newest first.
+              {pendingCount > 0 &&
+                ` ${pendingCount} ${pendingCount === 1 ? "is" : "are"} still being uploaded.`}
             </p>
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-5">
               {videos.map((video) => (

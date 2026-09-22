@@ -13,12 +13,14 @@ export const fetchPromos = async (_req: Request, res: Response) => {
 
 /**
  * POST /validate-promo — previews a coupon for a checkout.
- * Body: { code, orderValue } with orderValue as the INDIA LIST total in INR.
+ * Body: { code, orderValue, phone? } with orderValue as the INDIA LIST total in
+ * INR. `phone` is the devotee's WhatsApp number; coupons the admin restricted to
+ * first-time devotees need it, and every other coupon ignores it.
  * Checkouts must still re-apply the code server-side when creating the order;
  * this answer is for display only.
  */
 export const validatePromo = async (req: Request, res: Response) => {
-  const { code, orderValue } = req.body as Record<string, unknown>;
-  const applied = await resolvePromo(code, Number(orderValue));
+  const { code, orderValue, phone } = req.body as Record<string, unknown>;
+  const applied = await resolvePromo(code, Number(orderValue), { phone });
   return res.status(200).json({ success: true, ...applied });
 };

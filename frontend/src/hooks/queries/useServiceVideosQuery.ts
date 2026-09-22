@@ -10,7 +10,9 @@ export interface ServiceVideo {
   /** "chadhava", "puja", … */
   service: string;
   name: string;
-  /** Absolute and ready to parse — the server expands the stored Drive path. */
+  /** "coming_soon" = ops has filed this booking's row but not the link yet. */
+  status: "ready" | "coming_soon";
+  /** Absolute and ready to parse. Empty unless `status` is "ready". */
   videoUrl: string;
   link: string;
   createdAt?: string;
@@ -59,8 +61,12 @@ export const useServiceVideosQuery = (phone: string | undefined, service = "chad
     const map = new Map<string, ServiceVideo>();
     for (const video of query.data ?? []) {
       const key = orderKey(video.orderId);
-      // Newest first from the API, so the first row for an order wins.
-      if (key && video.videoUrl && !map.has(key)) map.set(key, video);
+      if (!key) continue;
+      const held = map.get(key);
+      /* Newest first from the API, so the first row for an order wins — except
+         that a playable video always beats a "coming soon" placeholder, however
+         the two are ordered. Ops re-filing a row leaves both behind. */
+      if (!held || (held.status !== "ready" && video.status === "ready")) map.set(key, video);
     }
     return map;
   }, [query.data]);

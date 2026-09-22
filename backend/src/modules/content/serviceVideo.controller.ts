@@ -4,13 +4,20 @@ import ServiceVideo, { SERVICE_CHADHAVA, type IServiceVideo } from "./serviceVid
 import NewChadhavaBooking from "../chadhava/newChadhavaBooking.model";
 import { normalizePhone } from "../../config/currency";
 
+/**
+ * "ready" — there is a playable URL.
+ * "coming_soon" — ops has filed the row for this booking but not the link yet.
+ */
+export type ServiceVideoStatus = "ready" | "coming_soon";
+
 /** Shape returned to the web app / mobile app. */
 interface ServiceVideoDto {
   _id: string;
   orderId: string;
   service: string;
   name: string;
-  /** Always absolute and safe to hand to an <iframe>/parser. */
+  status: ServiceVideoStatus;
+  /** Absolute and safe to hand to an <iframe>/parser. Empty when not ready. */
   videoUrl: string;
   /** The raw stored value, for debugging and for clients that parse it. */
   link: string;
@@ -42,15 +49,39 @@ export const toAbsoluteVideoUrl = (raw: unknown): string => {
   return value;
 };
 
-const toDto = (doc: IServiceVideo & { _id: unknown }): ServiceVideoDto => ({
-  _id: String(doc._id),
-  orderId: doc.orderId ?? "",
-  service: doc.service || SERVICE_CHADHAVA,
-  name: doc.name ?? "",
-  videoUrl: toAbsoluteVideoUrl(doc.link),
-  link: doc.link ?? "",
-  createdAt: doc.createdAt,
-});
+/**
+ * The service this row belongs to.
+ *
+ * Also reads `"service "` — with a trailing space — because that key has been
+ * written into the collection by hand. `doc.service` is then undefined, which
+ * the chadhava filter treats as "old row, therefore chadhava"; harmless today,
+ * but the first puja video saved that way would be served as a chadhava one.
+ * Reading both spellings means a typo mis-files nothing.
+ */
+const serviceOf = (doc: IServiceVideo): string => {
+  const raw = doc.service ?? (doc as unknown as Record<string, unknown>)["service "];
+  return String(raw ?? "").trim().toLowerCase() || SERVICE_CHADHAVA;
+};
+
+const toDto = (doc: IServiceVideo & { _id: unknown }): ServiceVideoDto => {
+  const videoUrl = toAbsoluteVideoUrl(doc.link);
+  /* Only an absolute http(s) URL is playable. `toAbsoluteVideoUrl` hands back
+     anything it cannot place untouched, so a placeholder ops typed in the link
+     column ("pending", "-", "NA") arrives here as-is and must not be offered as
+     a video — it becomes "coming soon" along with a blank link. */
+  const ready = /^https?:\/\//i.test(videoUrl);
+
+  return {
+    _id: String(doc._id),
+    orderId: doc.orderId ?? "",
+    service: serviceOf(doc),
+    name: doc.name ?? "",
+    status: ready ? "ready" : "coming_soon",
+    videoUrl: ready ? videoUrl : "",
+    link: doc.link ?? "",
+    createdAt: doc.createdAt,
+  };
+};
 
 /**
  * Match on `service`, tolerating rows the admin tool wrote before it knew about
@@ -125,7 +156,10 @@ export const getServiceVideosByPhone = async (req: Request, res: Response): Prom
     .sort({ createdAt: -1 })
     .lean<(IServiceVideo & { _id: unknown })[]>();
 
-  const videos = docs.map(toDto).filter((v) => v.videoUrl);
+  /* No filter on videoUrl. A row with no link yet is ops saying "this booking's
+     video is on its way", and the devotee is better told that than shown
+     nothing — which is indistinguishable from us having forgotten them. */
+  const videos = docs.map(toDto);
   const titles = await titlesForOrderIds(
     videos.map((v) => v.orderId).filter(Boolean),
     phone,

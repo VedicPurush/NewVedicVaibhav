@@ -46,9 +46,11 @@ interface ChadhavaBookingCardProps {
   bookingDate: string;
   gotra?: string;
   accessories?: Accessory[];
-  /** Absolute URL of the video filmed at the temple, once ops has uploaded it.
-   *  Undefined until then — the whole block is hidden in that case. */
+  /** Absolute URL of the video filmed at the temple, once ops has uploaded it. */
   videoUrl?: string;
+  /** True when this booking has a video row but no link yet. Mutually exclusive
+   *  with `videoUrl`; both absent means nothing is shown at all. */
+  videoComingSoon?: boolean;
 }
 
 const getStatusTag = (status: string) => {
@@ -132,6 +134,29 @@ const WatchVideoButton: React.FC<{ onClick: () => void; compact?: boolean }> = (
   </button>
 );
 
+/** Shown once ops has filed the booking's row but before the link is in.
+ *  Deliberately calm and non-clickable — it is a status, not an action. */
+const VideoComingSoon: React.FC<{ compact?: boolean }> = ({ compact }) => (
+  <div
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 8,
+      background: "#FFF4E5",
+      border: "1px solid #FFD8A8",
+      color: "#9A4B00",
+      borderRadius: 8,
+      padding: compact ? "7px 12px" : "8px 16px",
+      fontFamily: "Poppins",
+      fontSize: compact ? 12 : 12.5,
+      fontWeight: 500,
+    }}
+  >
+    <ClockCircleOutlined style={{ fontSize: compact ? 13 : 14 }} />
+    Your video is coming soon
+  </div>
+);
+
 const ChadhavaBookingCard: React.FC<ChadhavaBookingCardProps> = ({
   chadhavaId,
   orderID,
@@ -150,6 +175,7 @@ const ChadhavaBookingCard: React.FC<ChadhavaBookingCardProps> = ({
   gotra,
   accessories,
   videoUrl,
+  videoComingSoon,
 }) => {
   const screens = useBreakpoint();
   const isMobile = !screens.md;
@@ -279,11 +305,15 @@ const ChadhavaBookingCard: React.FC<ChadhavaBookingCardProps> = ({
 
           <div style={{ marginTop: 8 }}>{getStatusTag(status)}</div>
 
-          {videoUrl && (
+          {videoUrl ? (
             <div style={{ marginTop: 10 }}>
               <WatchVideoButton compact onClick={() => setShowVideo(true)} />
             </div>
-          )}
+          ) : videoComingSoon ? (
+            <div style={{ marginTop: 10 }}>
+              <VideoComingSoon compact />
+            </div>
+          ) : null}
 
           {accessories && accessories.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
@@ -483,11 +513,15 @@ const ChadhavaBookingCard: React.FC<ChadhavaBookingCardProps> = ({
             </Text>
           </Col>
 
-          {videoUrl && (
+          {videoUrl ? (
             <Col span={24} style={{ marginTop: 4 }}>
               <WatchVideoButton onClick={() => setShowVideo(true)} />
             </Col>
-          )}
+          ) : videoComingSoon ? (
+            <Col span={24} style={{ marginTop: 4 }}>
+              <VideoComingSoon />
+            </Col>
+          ) : null}
 
           {/* Accessories */}
           {accessories && accessories.length > 0 && (

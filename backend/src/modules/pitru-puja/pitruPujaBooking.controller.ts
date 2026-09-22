@@ -138,11 +138,18 @@ export const createPitruPujaBooking = async (req: Request, res: Response): Promi
   const pkg = puja.packages.find((p) => p.label === packageLabel);
   if (!pkg) throw ApiError.badRequest("Selected package no longer exists for this puja.");
 
-  if (ancestorNames.length !== pkg.personCount) {
-    throw ApiError.badRequest(`This package is for ${pkg.personCount} ancestor(s).`);
+  // The package sets the ceiling, not the quota. A devotee who buys the
+  // three-ancestor package and names only one still pays the package price — the
+  // remaining places are simply unused, which is their choice to make. More
+  // names than the package covers is still refused: that would be a discount.
+  if (ancestorNames.length > pkg.personCount) {
+    throw ApiError.badRequest(`This package covers up to ${pkg.personCount} ancestor(s).`);
   }
 
-  const promo = promoCode ? await resolvePromo(promoCode, pkg.price) : null;
+  // Validated against the devotee's own number so a coupon the admin restricted
+  // to first-time devotees cannot be charged by anyone else, whatever the
+  // browser was shown.
+  const promo = promoCode ? await resolvePromo(promoCode, pkg.price, { phone: whatsappDigits }) : null;
   const payableInr = promo ? promo.finalAmount : pkg.price;
 
   const orderId = generateOrderID();

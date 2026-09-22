@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PlayCircleFilled } from "@ant-design/icons";
+import { ClockCircleOutlined, PlayCircleFilled } from "@ant-design/icons";
 import ServiceVideoModal from "@/components/shared/ServiceVideoModal";
 import type { ServiceVideo } from "@/hooks/queries/useServiceVideosQuery";
 
@@ -53,27 +53,47 @@ const UnlinkedChadhavaVideos: React.FC<{ videos: ServiceVideo[] }> = ({ videos }
             <span style={{ fontSize: 12.5, color: "rgba(0,0,0,0.65)", minWidth: 0, wordBreak: "break-word" }}>
               Order ID: {video.orderId || "N/A"}
             </span>
-            <button
-              type="button"
-              onClick={() => setOpenUrl(video.videoUrl)}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                background: "linear-gradient(135deg, #7A0F1F 0%, #C2410C 100%)",
-                color: "#fff",
-                border: "none",
-                borderRadius: 8,
-                padding: "7px 14px",
-                fontFamily: "Poppins",
-                fontSize: 12.5,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              <PlayCircleFilled style={{ fontSize: 14 }} />
-              Watch
-            </button>
+            {video.status === "ready" ? (
+              <button
+                type="button"
+                onClick={() => setOpenUrl(video.videoUrl)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: "linear-gradient(135deg, #7A0F1F 0%, #C2410C 100%)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "7px 14px",
+                  fontFamily: "Poppins",
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                <PlayCircleFilled style={{ fontSize: 14 }} />
+                Watch
+              </button>
+            ) : (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: "#FFF4E5",
+                  border: "1px solid #FFD8A8",
+                  color: "#9A4B00",
+                  borderRadius: 8,
+                  padding: "6px 12px",
+                  fontSize: 12,
+                  fontWeight: 500,
+                }}
+              >
+                <ClockCircleOutlined style={{ fontSize: 13 }} />
+                Coming soon
+              </span>
+            )}
           </div>
         ))}
       </div>

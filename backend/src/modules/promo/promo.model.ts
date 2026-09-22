@@ -9,6 +9,8 @@ export interface IPromo extends Document {
   promoType: string;
   isActive: boolean;
   isAppOnly: boolean;
+  /** When true, only a devotee with no earlier paid booking may use this code. */
+  firstOrderOnly: boolean;
   addedOn: Date;
   startRange: number;
   description: string;
@@ -30,6 +32,10 @@ const promoSchema = new Schema<IPromo>(
     description: { type: String, default: "" },
     isActive: { type: Boolean, default: true },
     isAppOnly: { type: Boolean, default: false },
+    // Set from the admin tool. Missing on every promo already in the database,
+    // which `default` reads back as false — so no code in circulation changes
+    // meaning when this ships.
+    firstOrderOnly: { type: Boolean, default: false },
     addedOn: { type: Date, default: Date.now },
   },
   { timestamps: true },

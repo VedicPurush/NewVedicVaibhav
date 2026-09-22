@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
@@ -38,6 +38,26 @@ const errorDomId = (key: string) => `pitru-error-${key}`;
 
 /** Phones are typed with spaces and +91 often enough that only the digits count. */
 const digitsOf = (value: string) => value.replace(/\D/g, "");
+
+/** Long enough for the devotee to finish typing, short enough to feel instant. */
+const PHONE_SETTLE_MS = 500;
+
+/**
+ * A saved profile's name, however that profile happens to spell it — rows come
+ * from the website, the app and Google sign-in, and none of them agree.
+ */
+const profileName = (user: Record<string, unknown>): string => {
+  const pick = (...keys: string[]): string => {
+    for (const key of keys) {
+      const value = user[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
+    }
+    return "";
+  };
+  const first = pick("firstname", "firstName", "given_name");
+  const last = pick("lastname", "lastName", "family_name");
+  return `${first} ${last}`.trim() || pick("name", "fullName");
+};
 
 declare global {
   interface Window {
@@ -117,6 +137,15 @@ const RequiredLabel: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   </label>
 );
 
+/** Used for the ancestor slots past the first — a package sets how many names
+ *  it covers, not how many the devotee has to give. */
+const OptionalLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <label className="text-[13px] text-stone-700 font-medium block mb-2">
+    {children}
+    <span className="text-stone-400 font-normal ml-1">(optional)</span>
+  </label>
+);
+
 /** Sits directly under its field so the problem is read where it is fixed. */
 const FieldError: React.FC<{ fieldKey: string; message?: string }> = ({ fieldKey, message }) =>
   message ? (
@@ -185,6 +214,113 @@ const EnterPujaDetailsPage: React.FC<EnterPujaDetailsPageProps> = ({ pujaId }) =
       return next;
     });
 
+  const whatsappDigits = digitsOf(whatsappNumber);
+
+  /** The number as it stands once typing stops. Both the saved-profile lookup
+   *  and the applied coupon's re-check hang off this, so neither fires a
+   *  request per keystroke. */
+  const [settledPhone, setSettledPhone] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setSettledPhone(whatsappDigits), PHONE_SETTLE_MS);
+    return () => clearTimeout(id);
+  }, [whatsappDigits]);
+
+  const [prefillStatus, setPrefillStatus] = useState<"idle" | "loading" | "found">("idle");
+
+  /** Read inside the lookup's callback, which resolves long after the render it
+   *  started in — the state values captured there would be stale. */
+  const kartaNameRef = useRef(kartaName);
+  const kartaGotraRef = useRef(kartaGotra);
+  const gotraUnknownRef = useRef(gotraUnknown);
+  useEffect(() => {
+    kartaNameRef.current = kartaName;
+    kartaGotraRef.current = kartaGotra;
+    gotraUnknownRef.current = gotraUnknown;
+  });
+
+  /** Numbers already looked up, so re-entering one does not re-fetch it. */
+  const lastLookupRef = useRef("");
+
+  /** Exactly what a previous lookup wrote into each field. A field still
+   *  holding this is one the devotee has not touched, so the next lookup may
+   *  replace it; anything else is their own typing and is left alone. */
+  const prefilledRef = useRef<{ kartaName: string; kartaGotra: string }>({ kartaName: "", kartaGotra: "" });
+
+  /**
+   * Fills the Karta's name and Gotra from a saved profile, the same courtesy the
+   * chadhava checkout does — but never over the devotee's own typing. Someone
+   * booking on a relative's behalf has already entered the right name by the
+   * time this answers, and overwriting it would be worse than not helping.
+   *
+   * A number corrected after a first lookup does replace what that lookup left
+   * behind, so a mistyped digit cannot quietly send one devotee's booking out
+   * under another's name.
+   *
+   * Ancestor names are deliberately never prefilled — a profile's `familyMembers`
+   * are the living relatives a puja is offered for, not the departed.
+   */
+  useEffect(() => {
+    if (settledPhone.length !== 10) {
+      setPrefillStatus("idle");
+      return;
+    }
+    if (settledPhone === lastLookupRef.current) return;
+    lastLookupRef.current = settledPhone;
+
+    let cancelled = false;
+    setPrefillStatus("loading");
+
+    (async () => {
+      let name = "";
+      let gotra = "";
+      try {
+        const { data } = await api.get(`/get-user-by-phone/${settledPhone}`);
+        if (cancelled) return;
+        const user = data?.user;
+        if (user) {
+          name = profileName(user);
+          gotra = typeof user.gotra === "string" ? user.gotra.trim() : "";
+        }
+      } catch {
+        // A 404 just means a new devotee, and any other failure is a courtesy
+        // that did not happen — neither is worth an error on a booking form.
+        // Both land here with empty values, which clears only what a previous
+        // lookup put in and leaves anything typed by hand untouched.
+        if (cancelled) return;
+      }
+
+      const wasPrefilled = prefilledRef.current;
+      let filled = false;
+
+      if (!kartaNameRef.current.trim() || kartaNameRef.current === wasPrefilled.kartaName) {
+        setKartaName(name);
+        prefilledRef.current = { ...prefilledRef.current, kartaName: name };
+        if (name) {
+          clearFieldError("kartaName");
+          filled = true;
+        }
+      }
+
+      if (
+        !gotraUnknownRef.current &&
+        (!kartaGotraRef.current.trim() || kartaGotraRef.current === wasPrefilled.kartaGotra)
+      ) {
+        setKartaGotra(gotra);
+        prefilledRef.current = { ...prefilledRef.current, kartaGotra: gotra };
+        if (gotra) {
+          clearFieldError("gotra");
+          filled = true;
+        }
+      }
+
+      setPrefillStatus(filled ? "found" : "idle");
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [settledPhone]);
+
   const handleAncestorNameChange = (index: number, value: string) => {
     setAncestorNames((prev) => prev.map((name, i) => (i === index ? value : name)));
     clearFieldError(`ancestor-${index}`);
@@ -205,6 +341,14 @@ const EnterPujaDetailsPage: React.FC<EnterPujaDetailsPageProps> = ({ pujaId }) =
     ...ancestorNames.map((_, index) => `ancestor-${index}`),
   ];
 
+  /**
+   * The names actually given, blanks dropped. The package says how many
+   * ancestors it *covers*; a devotee who wants the puja for fewer of them —
+   * because they only know one name, or only mean to name one — is not made to
+   * invent the rest. Only what is typed is sent, and the price is unchanged.
+   */
+  const namedAncestors = ancestorNames.map((name) => name.trim()).filter(Boolean);
+
   const collectFieldErrors = (): Record<string, string> => {
     const errors: Record<string, string> = {};
 
@@ -224,11 +368,11 @@ const EnterPujaDetailsPage: React.FC<EnterPujaDetailsPageProps> = ({ pujaId }) =
       errors.gotra = "Please enter the Gotra, or tick the box below if you do not know it.";
     }
 
-    ancestorNames.forEach((name, index) => {
-      if (!name.trim()) {
-        errors[`ancestor-${index}`] = `Please enter the ${ordinal(index + 1)} ancestor's name.`;
-      }
-    });
+    // One name is the least a Sankalp can be taken with; beyond that the slots
+    // are an allowance, not a checklist, so empty ones are left alone.
+    if (namedAncestors.length === 0) {
+      errors["ancestor-0"] = "Please enter at least one ancestor's name.";
+    }
 
     return errors;
   };
@@ -242,14 +386,27 @@ const EnterPujaDetailsPage: React.FC<EnterPujaDetailsPageProps> = ({ pujaId }) =
     el.querySelector("input")?.focus({ preventScroll: true });
   };
 
-  /** Validated on the server; the booking request re-validates it against the package price. */
+  /** The number the applied coupon was judged against. */
+  const promoPhoneRef = useRef("");
+  const appliedPromoRef = useRef(appliedPromo);
+  useEffect(() => {
+    appliedPromoRef.current = appliedPromo;
+  });
+
+  /**
+   * Validated on the server, against both the package price and this devotee's
+   * own number — eligibility rules such as "first booking only" depend on who is
+   * asking, which only the server can answer. The booking request runs the same
+   * check again, so a coupon that got past the browser still cannot be charged.
+   */
   const applyCoupon = async (rawCode: string) => {
     const code = rawCode.trim();
     if (!code) return setCouponError("Please enter a coupon code.");
     setCouponError("");
     setApplyingCode(code.toUpperCase());
     try {
-      const applied = await validatePromo(code, basePrice);
+      const applied = await validatePromo(code, basePrice, whatsappDigits);
+      promoPhoneRef.current = whatsappDigits;
       setAppliedPromo(applied);
       setCouponInput("");
       setShowAllCoupons(false);
@@ -264,6 +421,39 @@ const EnterPujaDetailsPage: React.FC<EnterPujaDetailsPageProps> = ({ pujaId }) =
     setAppliedPromo(null);
     setCouponError("");
   };
+
+  /**
+   * Re-checks an applied coupon when the WhatsApp number changes under it.
+   * A code can be eligible for one devotee and not the next, so a coupon applied
+   * on one number must not simply carry over to another — better to drop it here,
+   * with the reason visible, than to have the booking call refuse it at the
+   * moment the devotee expects Razorpay to open.
+   */
+  useEffect(() => {
+    const promo = appliedPromoRef.current;
+    if (!promo || settledPhone === promoPhoneRef.current) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const applied = await validatePromo(promo.promoName, basePrice, settledPhone);
+        if (cancelled) return;
+        promoPhoneRef.current = settledPhone;
+        setAppliedPromo(applied);
+      } catch (err) {
+        if (cancelled) return;
+        promoPhoneRef.current = "";
+        setAppliedPromo(null);
+        setCouponError(
+          apiErrorMessage(err, `Coupon "${promo.promoName}" cannot be used with this number.`),
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [settledPhone, basePrice]);
 
   const handleProceedToPay = async () => {
     const errors = collectFieldErrors();
@@ -284,7 +474,7 @@ const EnterPujaDetailsPage: React.FC<EnterPujaDetailsPageProps> = ({ pujaId }) =
       content_name: packageTitle || "Pitru Puja",
       content_category: "Pitru Puja",
       content_type: "product",
-      num_items: ancestorNames.length,
+      num_items: namedAncestors.length,
       value: payableAmount,
       currency: "INR",
     });
@@ -303,7 +493,7 @@ const EnterPujaDetailsPage: React.FC<EnterPujaDetailsPageProps> = ({ pujaId }) =
           ...(hasDifferentCallingNumber ? { callingNumber: callingNumber.trim() } : {}),
           kartaName: kartaName.trim(),
           kartaGotra: kartaGotra.trim(),
-          ancestorNames: ancestorNames.map((n) => `Late ${n.trim()}`),
+          ancestorNames: namedAncestors.map((n) => `Late ${n}`),
           ...(appliedPromo ? { promoCode: appliedPromo.promoName } : {}),
         },
         { headers: metaHeaders() },
@@ -494,8 +684,25 @@ const EnterPujaDetailsPage: React.FC<EnterPujaDetailsPageProps> = ({ pujaId }) =
               placeholder="Enter your WhatsApp number"
               className="flex-1 min-w-0 text-[14px] outline-none bg-transparent"
             />
+            {prefillStatus === "loading" && (
+              <svg
+                className="animate-spin w-4 h-4 shrink-0 text-[#7A0F1F]"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+            )}
+            {prefillStatus === "found" && (
+              <CheckCircleIcon style={{ fontSize: 18, color: "#2E9E45" }} className="shrink-0" />
+            )}
           </div>
           <FieldError fieldKey="whatsapp" message={fieldErrors.whatsapp} />
+          {prefillStatus === "found" && !fieldErrors.whatsapp && (
+            <p className="text-[12px] text-[#2E7D3E] mt-1.5">✓ Details filled from your profile</p>
+          )}
 
           <label className="flex items-center gap-2 mt-3 text-[13px] text-stone-600">
             <input
@@ -625,12 +832,20 @@ const EnterPujaDetailsPage: React.FC<EnterPujaDetailsPageProps> = ({ pujaId }) =
             subtitle="Enter the name of ancestor(s)"
           />
 
+          {ancestorNames.length > 1 && (
+            <p className="text-[12px] text-stone-600 bg-[#FFF6F6] border border-[#F0D2D2] rounded-xl px-3 py-2 mb-3 leading-relaxed">
+              This package includes up to {ancestorNames.length} ancestors. Fill in only as many names as you
+              wish — the rest can be left blank.
+            </p>
+          )}
+
           <div className="space-y-3">
             {ancestorNames.map((name, index) => {
               const key = `ancestor-${index}`;
+              const Label = index === 0 ? RequiredLabel : OptionalLabel;
               return (
                 <div key={index}>
-                  <RequiredLabel>{`Name of ${ordinal(index + 1)} Ancestor`}</RequiredLabel>
+                  <Label>{`Name of ${ordinal(index + 1)} Ancestor`}</Label>
                   <div
                     id={fieldDomId(key)}
                     className={`flex items-stretch overflow-hidden ${fieldShell(!!fieldErrors[key])}`}
@@ -748,6 +963,11 @@ const EnterPujaDetailsPage: React.FC<EnterPujaDetailsPageProps> = ({ pujaId }) =
                             <div className="text-[13px] font-bold tracking-wide text-stone-900 break-words">
                               {promo.promoName}
                             </div>
+                            {promo.firstOrderOnly && (
+                              <span className="inline-block rounded-full bg-[#E7EEFF] text-[#3E5BD8] text-[10px] font-semibold px-2 py-0.5 mt-1">
+                                First booking only
+                              </span>
+                            )}
                             <div className="text-[12px] text-[#2E7D3E] mt-0.5">Save {formatPrice(promo.discountAmount)}</div>
                             {promo.description && (
                               <div className="text-[11px] text-stone-500 mt-0.5 line-clamp-2">{promo.description}</div>
