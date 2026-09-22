@@ -5,10 +5,48 @@ import axios from "axios";
  * `http://localhost:5009` across ~370 call sites and patched it at build time;
  * here every request goes through this module instead.
  */
-export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5009").replace(
-  /\/+$/,
-  "",
-);
+const CONFIGURED_API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5009"
+).replace(/\/+$/, "");
+
+/** Hosts meaning "the machine this browser is on" — the whole problem below. */
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+
+/**
+ * Resolve the backend origin for the device the browser is actually running on.
+ *
+ * NEXT_PUBLIC_* values are inlined into the bundle at build time, so the dev
+ * bundle carries a literal `http://localhost:5009`. That is correct on the dev
+ * machine and wrong on every other device: a phone opening the dev server at
+ * http://192.168.0.150:3000 resolves `localhost` to ITSELF, so every API call
+ * fails with a connection error that reads like the backend being down.
+ *
+ * So when the configured host is loopback but the page was served from some
+ * other host, keep the configured port and path and swap in the host the page
+ * came from. Nothing hardcodes today's DHCP address, so it survives a
+ * new lease.
+ *
+ * Deliberately inert everywhere else:
+ *   - SSR has no `window`, and the server really does want localhost.
+ *   - Production configures https://vedicvaibhav.com/api, whose host is not
+ *     loopback, so the configured value is returned untouched.
+ */
+const resolveApiBaseUrl = (): string => {
+  if (typeof window === "undefined") return CONFIGURED_API_BASE_URL;
+  try {
+    const configured = new URL(CONFIGURED_API_BASE_URL);
+    if (!LOOPBACK_HOSTS.has(configured.hostname)) return CONFIGURED_API_BASE_URL;
+    const pageHost = window.location.hostname;
+    if (LOOPBACK_HOSTS.has(pageHost)) return CONFIGURED_API_BASE_URL;
+    configured.hostname = pageHost;
+    return configured.toString().replace(/\/+$/, "");
+  } catch {
+    // A malformed base URL must not take the whole app down.
+    return CONFIGURED_API_BASE_URL;
+  }
+};
+
+export const API_BASE_URL = resolveApiBaseUrl();
 
 /** Build an absolute API URL from a path (`apiUrl("/getallpoojas")`). */
 export const apiUrl = (path: string): string => `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;

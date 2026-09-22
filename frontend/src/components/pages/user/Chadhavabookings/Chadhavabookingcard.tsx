@@ -7,10 +7,12 @@ import {
   CloseCircleOutlined,
   ClockCircleOutlined,
   DownOutlined,
+  PlayCircleFilled,
   UpOutlined,
 } from "@ant-design/icons";
 import React, { useState } from "react";
 import ReviewComponent from "../PoojaBookings/ReviewComponent";
+import ServiceVideoModal from "@/components/shared/ServiceVideoModal";
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -44,6 +46,9 @@ interface ChadhavaBookingCardProps {
   bookingDate: string;
   gotra?: string;
   accessories?: Accessory[];
+  /** Absolute URL of the video filmed at the temple, once ops has uploaded it.
+   *  Undefined until then — the whole block is hidden in that case. */
+  videoUrl?: string;
 }
 
 const getStatusTag = (status: string) => {
@@ -97,6 +102,36 @@ const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label,
   </div>
 );
 
+/** The card's call to action once the temple video is in. Deliberately the
+ *  loudest thing in the body — it is what devotees open the profile for. */
+const WatchVideoButton: React.FC<{ onClick: () => void; compact?: boolean }> = ({
+  onClick,
+  compact,
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 8,
+      background: "linear-gradient(135deg, #7A0F1F 0%, #C2410C 100%)",
+      color: "#fff",
+      border: "none",
+      borderRadius: 8,
+      padding: compact ? "8px 14px" : "9px 18px",
+      fontFamily: "Poppins",
+      fontSize: compact ? 12.5 : 13,
+      fontWeight: 600,
+      cursor: "pointer",
+      boxShadow: "0 2px 8px rgba(122,15,31,0.3)",
+    }}
+  >
+    <PlayCircleFilled style={{ fontSize: compact ? 15 : 16 }} />
+    Watch Your Chadhava Video
+  </button>
+);
+
 const ChadhavaBookingCard: React.FC<ChadhavaBookingCardProps> = ({
   chadhavaId,
   orderID,
@@ -114,10 +149,12 @@ const ChadhavaBookingCard: React.FC<ChadhavaBookingCardProps> = ({
   bookingDate,
   gotra,
   accessories,
+  videoUrl,
 }) => {
   const screens = useBreakpoint();
   const isMobile = !screens.md;
   const [showDetails, setShowDetails] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
 
   const showFamily =
     familyMembers && familyMembers.trim().length > 0 && familyMembers !== "N/A";
@@ -241,6 +278,12 @@ const ChadhavaBookingCard: React.FC<ChadhavaBookingCardProps> = ({
           </div>
 
           <div style={{ marginTop: 8 }}>{getStatusTag(status)}</div>
+
+          {videoUrl && (
+            <div style={{ marginTop: 10 }}>
+              <WatchVideoButton compact onClick={() => setShowVideo(true)} />
+            </div>
+          )}
 
           {accessories && accessories.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
@@ -440,6 +483,12 @@ const ChadhavaBookingCard: React.FC<ChadhavaBookingCardProps> = ({
             </Text>
           </Col>
 
+          {videoUrl && (
+            <Col span={24} style={{ marginTop: 4 }}>
+              <WatchVideoButton onClick={() => setShowVideo(true)} />
+            </Col>
+          )}
+
           {/* Accessories */}
           {accessories && accessories.length > 0 && (
             <>
@@ -572,6 +621,15 @@ const ChadhavaBookingCard: React.FC<ChadhavaBookingCardProps> = ({
           `}</style>
         </Row>
       </div>
+      )}
+
+      {videoUrl && (
+        <ServiceVideoModal
+          open={showVideo}
+          onClose={() => setShowVideo(false)}
+          videoUrl={videoUrl}
+          title={pujaTitle}
+        />
       )}
     </Card>
   );

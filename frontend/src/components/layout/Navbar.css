@@ -80,7 +80,25 @@
    the hero at every desktop width — and got worse as the link text grew, since
    that made the pill taller without changing the spacer at all. */
 .header-offset {
-  margin-top: 12%;
+  /* The mobile header is 36px announcement bar + 65px logo row = 101px, constant
+     at every phone width (measured 360/395/430). A static 41px block sits above
+     this element in flow, so the margin only has to make up the rest: 60px puts
+     content exactly at the header's bottom edge, and 80px leaves the same ~20px
+     of breathing room the desktop spacer below ends up with.
+
+     Clearing the FULL 101px box matters here in a way it does not on desktop,
+     where the spacer deliberately stops at the logo's visible end. The mobile
+     header paints no background of its own under the announcement bar — the
+     cream and the bells are the page background showing through it — so
+     anything a page draws above 101px is drawn *behind the logo*. At the old
+     value a dark hero cut the wordmark in half.
+
+     A percentage cannot express a height: margin-top percentages resolve
+     against WIDTH, so the old `12%` reserved 43px at 360px and 52px at 430px
+     for a header that is 101px at both, leaving ~17px of every page tucked
+     under it. That is the same bug the note above says the desktop spacer was
+     rewritten to fix, left behind on mobile. */
+  margin-top: 80px;
 }
 
 @media screen and (min-width: 768px) {

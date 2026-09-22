@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Row, Col, Spin, message } from "antd";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import ChadhavaBookingCard from "./Chadhavabookingcard";
+import UnlinkedChadhavaVideos from "./UnlinkedChadhavaVideos";
 import { api } from "@/lib/api";
+import { orderKey, useServiceVideosQuery } from "@/hooks/queries/useServiceVideosQuery";
 
 // --- Types ---
 interface Address {
@@ -57,6 +59,21 @@ const customScrollbarStyle = `
     background: rgba(0, 0, 0, 0.05);
   }
 `;
+
+/**
+ * The signed-in devotee's number as the booking records store it: bare digits,
+ * with India's 91 stripped. Both booking APIs and the video lookup key on this.
+ */
+const readStoredPhone = (): string => {
+  try {
+    const raw = JSON.parse(localStorage.getItem("userDetails") || "{}")?.user?.phone;
+    if (!raw) return "";
+    const digits = String(raw).replace(/\D/g, "");
+    return digits.startsWith("91") ? digits.slice(2) : digits;
+  } catch {
+    return "";
+  }
+};
 
 const normalizeStatus = (s?: string): "pending" | "confirmed" | "failed" => {
   if (s === "confirmed") return "confirmed";
@@ -154,6 +171,11 @@ const buildAccessoriesForCard = (b: Booking): any[] => {
 const ChadhavaBookings = () => {
   const [bookingDetails, setBookingDetails] = useState<Booking[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [phone, setPhone] = useState<string>("");
+
+  /** Temple videos for this devotee, keyed by order id. Fails silently — a
+   *  video outage must not take the bookings list down with it. */
+  const { videos, byOrderId } = useServiceVideosQuery(phone || undefined, "chadhava");
 
   useEffect(() => {
     const styleElement = document.createElement("style");
@@ -169,16 +191,13 @@ const ChadhavaBookings = () => {
   useEffect(() => {
     const fetchBooking = async () => {
       setLoading(true);
-      const userDetailsRaw = localStorage.getItem("userDetails") || "{}";
-      const userDetails = JSON.parse(userDetailsRaw);
 
       const promises = [];
 
       // 1. Fetch old bookings via Phone
-      let phoneNumber: string | undefined = userDetails?.user?.phone;
+      const phoneNumber = readStoredPhone();
+      setPhone(phoneNumber);
       if (phoneNumber) {
-        phoneNumber = phoneNumber.replace(/\D/g, "");
-        if (phoneNumber.startsWith("91")) phoneNumber = phoneNumber.slice(2);
         promises.push(
           api
             .get(`/chadhava-details/${encodeURIComponent(phoneNumber)}`)
@@ -353,6 +372,16 @@ const ChadhavaBookings = () => {
     fetchBooking();
   }, []);
 
+  /**
+   * Videos whose order id matches nothing on this page — the booking was
+   * archived, or ops typed the id by hand and it drifted. They are still this
+   * devotee's videos, so they get their own section rather than disappearing.
+   */
+  const unlinkedVideos = useMemo(() => {
+    const shown = new Set(bookingDetails.map((b) => orderKey(b.orderID)).filter(Boolean));
+    return videos.filter((v) => !shown.has(orderKey(v.orderId)));
+  }, [videos, bookingDetails]);
+
   if (loading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", padding: "50px" }}>
@@ -362,9 +391,13 @@ const ChadhavaBookings = () => {
   }
 
   if (!bookingDetails || bookingDetails.length === 0) {
+    // A devotee whose bookings have all been archived can still have videos.
     return (
-      <div style={{ textAlign: "center", padding: "20px" }}>
-        No Chadhava bookings found.
+      <div style={{ paddingInline: isSmallScreen ? "3%" : "" }}>
+        <UnlinkedChadhavaVideos videos={unlinkedVideos} />
+        <div style={{ textAlign: "center", padding: "20px" }}>
+          No Chadhava bookings found.
+        </div>
       </div>
     );
   }
@@ -385,6 +418,8 @@ const ChadhavaBookings = () => {
       >
         My Chadhava Bookings
       </div>
+
+      <UnlinkedChadhavaVideos videos={unlinkedVideos} />
 
       <Row gutter={[16, 16]}>
         {bookingDetails.map((b, i) => {
@@ -424,6 +459,7 @@ const ChadhavaBookings = () => {
                 bookingDate={b.bookingDate ?? "N/A"}
                 gotra={b.gotra ?? "N/A"}
                 accessories={buildAccessoriesForCard(b) as any}
+                videoUrl={byOrderId.get(orderKey(b.orderID))?.videoUrl}
               />
             </Col>
           );

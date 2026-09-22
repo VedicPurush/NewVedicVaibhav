@@ -3,6 +3,7 @@ import cors from "cors";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import { errorHandler, notFoundHandler } from "./middleware/error";
+import { isLocal } from "./config/env";
 
 // ── Module routers ────────────────────────────────────────────────────────────
 import authRoutes from "./modules/users/auth.routes";
@@ -27,6 +28,7 @@ import bannerRoutes from "./modules/content/banner.routes";
 import godRoutes from "./modules/content/god.routes";
 import libraryRoutes from "./modules/content/library.routes";
 import videoProofRoutes from "./modules/content/videoProof.routes";
+import serviceVideoRoutes from "./modules/content/serviceVideo.routes";
 import feedbackRoutes from "./modules/content/feedback.routes";
 import messageRoutes from "./modules/content/message.routes";
 import jyotirlingaRoutes from "./modules/jyotirlinga/jyotirlinga.routes";
@@ -58,11 +60,26 @@ const allowedOrigins = [
   "http://dev.vedicvaibhav.com",
 ];
 
+/**
+ * Dev only: accept any local-network origin, so the site can be opened from a
+ * phone or tablet on the same Wi-Fi without pinning today's DHCP address in
+ * the list above (it was previously hardcoded to one 192.168.x.y, which broke
+ * on every new lease). Covers RFC1918 ranges plus loopback spelled as an IP
+ * literal, which the allowlist above misses because it names only `localhost`.
+ *
+ * The pattern is fully anchored and admits private literals only, so no public
+ * host can match it (`http://192.168.0.1.evil.com` does not), and `isLocal`
+ * means it is never consulted in production.
+ */
+const LOCAL_DEV_ORIGIN =
+  /^https?:\/\/(?:localhost|\[::1\]|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|10\.(?:\d{1,3}\.){2}\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(?::\d+)?$/;
+
 app.use(
   cors({
     origin: (origin, callback) => {
       // Server-to-server / curl requests carry no Origin header.
       if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      if (isLocal && LOCAL_DEV_ORIGIN.test(origin)) return callback(null, true);
       return callback(new Error(`Not allowed by CORS: ${origin}`));
     },
     credentials: true,
@@ -128,6 +145,7 @@ app.use("/banner", bannerRoutes);
 app.use("/", godRoutes);
 app.use("/", libraryRoutes);
 app.use("/video-proofs", videoProofRoutes);
+app.use("/service-videos", serviceVideoRoutes);
 app.use("/feedback", feedbackRoutes);
 app.use("/", messageRoutes);
 app.use("/jyotirlinga", jyotirlingaRoutes);

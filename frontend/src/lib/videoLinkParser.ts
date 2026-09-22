@@ -23,8 +23,10 @@ export const parseVideoLink = (raw: string, title: string): ParsedVideo => {
     };
   }
 
-  // Google Drive: drive.google.com/file/d/FILE_ID/...
-  const driveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  // Google Drive: drive.google.com/file/d/FILE_ID/... — and the host-less
+  // "file/d/FILE_ID/view?usp=drive_link" form the ops tool writes into `links`,
+  // which is a perfectly good Drive path with only the domain missing.
+  const driveMatch = url.match(/(?:drive\.google\.com\/)?\bfile\/d\/([a-zA-Z0-9_-]+)/);
   if (driveMatch) {
     const id = driveMatch[1];
     return {

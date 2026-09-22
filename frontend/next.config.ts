@@ -90,6 +90,21 @@ const nextConfig: NextConfig = {
   // clobbering the `.next` a running dev server owns. Defaults to `.next`.
   distDir: process.env.NEXT_DIST_DIR || ".next",
   reactStrictMode: true,
+
+  // Dev-only allowlist for /_next/* assets and the HMR websocket. The dev
+  // server gets opened from phones on the LAN for responsive testing, and
+  // every such request was logging a cross-origin warning.
+  //
+  // CAUTION: this key is opt-in enforcement. While it is UNSET Next only
+  // warns; the moment it exists, any origin not matched here is hard-blocked
+  // with a 403 ("Unauthorized") instead. `localhost` and `*.localhost` stay
+  // allowed implicitly, but `127.0.0.1` does NOT -- hence the explicit entry,
+  // without which browsing the dev server by loopback IP would break.
+  //
+  // Patterns match segment-wise on `.`, so an octet wildcard works and
+  // survives DHCP handing out a different address inside the subnet. Drop the
+  // 192.168.1.* entry if that range is never used.
+  allowedDevOrigins: ["127.0.0.1", "192.168.0.*", "192.168.1.*"],
   compiler: {
     // A handful of ported components use styled-components.
     styledComponents: true,
