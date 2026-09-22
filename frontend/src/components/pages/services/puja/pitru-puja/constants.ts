@@ -17,7 +17,7 @@ export const pitruPujaHref = (pujaId: string) =>
  * one conversion instead of counting the money twice.
  *
  * The backend builds the identical string from `eventIdPrefix:
- * "pitru_purchase_"` in modules/pitru-puja/pitruPujaBooking.controller.ts —
+ * "pitru_purchase_"` in modules/pitru-puja/pitruPujaBooking.notify.ts —
  * the two must be changed together, and `orderId` must be the booking's own
  * `orderId` (VVPP…) on both sides, not the Razorpay order id.
  */

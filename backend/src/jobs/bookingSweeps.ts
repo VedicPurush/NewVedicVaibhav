@@ -21,6 +21,10 @@ import {
 } from "../modules/jyotirlinga/subscription.controller";
 import PendingPersonalizedPoojaBooking from "../modules/personalized-pooja/pendingPersonalizedPooja.model";
 import PersonalizedPoojaBooking from "../modules/personalized-pooja/personalizedPooja.model";
+import PendingPitruPujaBooking from "../modules/pitru-puja/pendingPitruPujaBooking.model";
+import PitruPujaBooking from "../modules/pitru-puja/pitruPujaBooking.model";
+import { confirmPitruPujaBooking } from "../modules/pitru-puja/pitruPujaBooking.controller";
+import { sendPitruPujaConfirmations } from "../modules/pitru-puja/pitruPujaBooking.notify";
 
 /**
  * Pending-booking reconciliation sweep (legacy "chadhava cleanup" cron):
@@ -260,6 +264,37 @@ export const startPendingBookingSweeps = (): void => {
           }
         } catch (err) {
           logger.error(`[Cron][JyotirlingChadhava] Error checking order ${booking.orderID}: ${errText(err)}`);
+        }
+      }
+
+      // 9. Pitru Puja
+      const pendingPitru = await PendingPitruPujaBooking.find({ createdAt: staleWindow });
+      for (const pending of pendingPitru) {
+        try {
+          const booking = await PitruPujaBooking.findOne({ orderId: pending.orderId }).select(
+            "razorpayOrderId paymentStatus",
+          );
+          if (!booking) continue;
+
+          // Already confirmed by the browser or the webhook — the pending row
+          // is just litter at this point.
+          if (booking.paymentStatus) {
+            await PendingPitruPujaBooking.deleteOne({ orderId: pending.orderId });
+            continue;
+          }
+
+          // Written when the Razorpay order was created, so it is a real
+          // order_… id and needs no receipt lookup.
+          const rzpOrderId = booking.razorpayOrderId;
+          if (!rzpOrderId) continue;
+
+          const payment = await findCapturedPayment(rzpOrderId);
+          if (!payment) continue;
+
+          const confirmed = await confirmPitruPujaBooking({ razorpayOrderId: rzpOrderId }, payment.id);
+          if (confirmed) await sendPitruPujaConfirmations(confirmed);
+        } catch (err) {
+          logger.error(`[Cron][PitruPuja] Failed to finalize pending ${pending.orderId}: ${errText(err)}`);
         }
       }
     } catch (err) {

@@ -18,6 +18,7 @@ import {
 import { poojaBookingConfirmation } from "../../utils/mail/smtp";
 import { normalPoojaBookingToAdmin, normalPoojaBookingToUser } from "../../utils/mail/smtpUs";
 import { sendWhatsappTemplateMessage } from "../../utils/whatsapp";
+import { sendFast2SmsDlt } from "../../utils/sms";
 import { sendMetaPurchaseEvent } from "../../utils/metaCapi";
 import {
   tryConsumeAppReferralOrder,
@@ -116,6 +117,35 @@ const sendOrderToPartnerAffiliate = async (booking: IPoojaBooking): Promise<void
     );
     // Log the error but do not throw — the main booking process is not affected.
   }
+};
+
+/**
+ * Booking-confirmation SMS.
+ *
+ * Shared by both confirmation paths deliberately. This used to be written out
+ * inline inside `finalizePoojaBookingRecord`'s `if (!skipEmails)` block, which
+ * the browser verify path skips — so the SMS only ever reached devotees whose
+ * payment was rescued by the webhook or the cron sweep, and never the ordinary
+ * case where the browser calls back. Keeping one function called from both
+ * places is what stops the two paths drifting apart again.
+ *
+ * DLT template 195395 takes: devotee | puja | date.
+ */
+const sendPoojaBookingSms = async (booking: IPoojaBooking): Promise<void> => {
+  const last10 = String(booking.mobile || "")
+    .replace(/\D/g, "")
+    .slice(-10);
+  if (last10.length !== 10) return;
+
+  await sendFast2SmsDlt({
+    to: last10,
+    dltTemplateId: "195395",
+    variables: [
+      booking.bhaktaNames?.[0] || booking.firstname || "Devotee",
+      booking.poojaname || "Puja",
+      booking.poojadate || new Date().toISOString(),
+    ],
+  });
 };
 
 /** Run post-confirm side effects without delaying the HTTP response. All best-effort. */
@@ -228,6 +258,13 @@ const runPoojaPostConfirmSideEffects = async (booking: IPoojaBooking | null | un
     }
   } catch (e: any) {
     logger.error({ err: e?.response?.data || e?.message || e }, "[Pooja][BG] Support user mail failed");
+  }
+
+  // Fast2SMS confirmation (best-effort)
+  try {
+    await sendPoojaBookingSms(booking);
+  } catch (e: any) {
+    logger.error({ err: e?.response?.data || e?.message || e }, "[Pooja][BG] Fast2SMS failed");
   }
 
   // Meta CAPI purchase (best-effort)
@@ -897,19 +934,9 @@ export const finalizePoojaBookingRecord = async ({
       logger.error({ err: e?.response?.data || e?.message || e }, "[Pooja][Finalize] WhatsApp failed");
     }
 
-    // Fast2SMS confirmation (best-effort)
+    // Fast2SMS confirmation (best-effort). Same helper the browser path uses.
     try {
-      const rawMobile = String(newBooking.mobile || "").replace(/\D/g, "");
-      const last10 = rawMobile.slice(-10);
-      if (last10.length === 10) {
-        const devoteeName = newBooking.bhaktaNames?.[0] || newBooking.firstname || "Devotee";
-        const poojaName = newBooking.poojaname || "Puja";
-        const poojaDate = newBooking.poojadate || new Date().toISOString();
-
-        const smsUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${env.fast2sms.apiKey}&route=dlt&sender_id=VVORDR&message=195395&variables_values=${encodeURIComponent(devoteeName)}|${encodeURIComponent(poojaName)}|${encodeURIComponent(poojaDate)}&flash=0&numbers=${last10}&schedule_time=`;
-
-        await axios.get(smsUrl);
-      }
+      await sendPoojaBookingSms(newBooking);
     } catch (e: any) {
       logger.error({ err: e?.response?.data || e?.message || e }, "[Pooja][Finalize] Fast2SMS failed");
     }

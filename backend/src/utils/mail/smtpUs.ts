@@ -1720,3 +1720,121 @@ export const personalizedPoojaBookingToUser = async (details: {
     logger.error({ err: error }, "[PersonalizedPooja] Error sending user confirmation email");
   }
 };
+
+export interface PitruPujaAdminEmailBooking {
+  orderId: string;
+  poojaName: string;
+  packageLabel: string;
+  /** How many ancestors the package covers. */
+  personCount: number;
+  /** The names actually given, which may be fewer than `personCount`. */
+  ancestorNames: string[];
+  kartaName: string;
+  kartaGotra: string;
+  whatsappNumber: string;
+  callingNumber?: string;
+  mandirName?: string;
+  mandirPlace?: string;
+  poojaDate?: string;
+  price: number;
+  originalAmount?: number;
+  promoCode?: string;
+  discountAmount?: number;
+  transactionId?: string;
+  /** Presentment fields, so the figure matches the devotee's card statement. */
+  currency?: string | null;
+  chargedAmount?: number | null;
+  fxRate?: number | null;
+  priceMultiplier?: number | null;
+}
+
+/**
+ * Tells the temple side a pitru puja has been booked.
+ *
+ * There is no devotee-facing counterpart: the pitru checkout never asks for an
+ * email address, and inventing one from the phone number — as the pooja flow
+ * does — would mail a stranger. The devotee is reached on WhatsApp and SMS
+ * instead, which is what they gave us a number for.
+ */
+export const pitruPujaBookingToAdmin = async (booking: PitruPujaAdminEmailBooking): Promise<void> => {
+  const row = (label: string, value: string) => `
+    <tr>
+      <th style="padding: 10px; background-color: #7A0F1F; color: #fff; text-align: left; width: 200px;">${label}</th>
+      <td style="padding: 10px; border: 1px solid #e0e0e0;">${value}</td>
+    </tr>`;
+
+  const ancestors = booking.ancestorNames.length
+    ? booking.ancestorNames.map((name) => `<li style="padding: 2px 0;">${name}</li>`).join("")
+    : "<li style=\"padding: 2px 0;\">—</li>";
+
+  // Worth showing plainly: the package is a ceiling, so naming fewer ancestors
+  // than it covers is the devotee's choice and not a data-entry mistake the
+  // temple should chase them about.
+  const namedNote =
+    booking.ancestorNames.length < booking.personCount
+      ? ` <em style="color:#7A0F1F;">(${booking.ancestorNames.length} of ${booking.personCount} named — the devotee chose to name fewer)</em>`
+      : "";
+
+  // `price` is the INR value of the sale, already marked up for an
+  // international card; `money.total()` renders it in the currency actually
+  // billed. The coupon is an India-list figure, so it uses `item()`.
+  const money = receiptMoney(booking, booking.price);
+
+  const discountRow =
+    booking.promoCode && booking.discountAmount
+      ? row("Coupon", `${booking.promoCode} (−${money.item(booking.discountAmount)})`)
+      : "";
+
+  const poojaDate = booking.poojaDate
+    ? new Date(booking.poojaDate).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        timeZone: "Asia/Kolkata",
+      })
+    : "—";
+
+  const body = `
+    <h1 style="color: #7A0F1F; text-align: center; font-size: 26px; margin-bottom: 8px;">🪔 New Pitru Puja Booking 🪔</h1>
+    <p style="font-size: 15px; text-align: center; color: #666; margin-top: 0;">Order <strong>${booking.orderId}</strong></p>
+
+    <h2 style="color: #333; font-size: 19px; border-bottom: 2px solid #7A0F1F; padding-bottom: 6px;">Booking</h2>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+      ${row("Puja", booking.poojaName || "Pitru Puja")}
+      ${row("Package", `${booking.packageLabel} (for ${booking.personCount} Pitru)`)}
+      ${row("Mandir", `${booking.mandirName || "—"}${booking.mandirPlace ? `, ${booking.mandirPlace}` : ""}`)}
+      ${row("Puja date", poojaDate)}
+      ${row("Amount paid", money.total(booking.price))}
+      ${discountRow}
+      ${row("Transaction", booking.transactionId || "—")}
+    </table>
+
+    <h2 style="color: #333; font-size: 19px; border-bottom: 2px solid #7A0F1F; padding-bottom: 6px;">Karta</h2>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+      ${row("Name", `${booking.kartaName} and family`)}
+      ${row("Gotra", booking.kartaGotra)}
+      ${row("WhatsApp", booking.whatsappNumber)}
+      ${booking.callingNumber ? row("Calling number", booking.callingNumber) : ""}
+    </table>
+
+    <h2 style="color: #333; font-size: 19px; border-bottom: 2px solid #7A0F1F; padding-bottom: 6px;">
+      Ancestors for the Sankalp${namedNote}
+    </h2>
+    <ul style="font-size: 15px; padding-left: 20px; margin-bottom: 24px;">${ancestors}</ul>
+
+    <p style="font-size: 13px; text-align: center; color: #888; margin-top: 30px;">© ${new Date().getFullYear()} Vedic Vaibhav</p>
+  `;
+
+  const mailOptions: SendMailOptions = {
+    from: `"Vedic Vaibhav" <${adminEmail}>`,
+    to: adminEmail,
+    subject: `🪔 New Pitru Puja Booking — ${booking.orderId}`,
+    html: getBaseTemplate("New Pitru Puja Booking", body),
+  };
+
+  try {
+    await transporterAdmin.sendMail(mailOptions);
+  } catch (error) {
+    logger.error({ err: error }, "[PitruPuja] Error sending booking email to admin");
+  }
+};
