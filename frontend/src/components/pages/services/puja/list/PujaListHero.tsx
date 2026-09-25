@@ -111,7 +111,7 @@ const PujaListHero: React.FC<PujaListHeroProps> = ({
 
       {/* ── Mobile ── */}
       {/* Bells + arch are already baked into bookPuja_mobile_bg — no hand-drawn emoji bells needed here. */}
-      <div className=" md:hidden relative px-5 pt-16 pb-5 text-center mt-2">
+      <div className=" md:hidden relative px-5 pb-3 text-center">
         <h1 className="font-display text-[25px] font-bold text-[#7C2D12] flex items-center justify-center gap-1.5">
           Book Online Pooja
           <span className="text-base" aria-hidden>🪷</span>

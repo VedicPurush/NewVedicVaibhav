@@ -254,7 +254,9 @@ const YatraBookings = () => {
         const { data } = await api.get(`/user/${phone}/4dham-bookings`);
 
         if (data.success && Array.isArray(data.bookings)) {
-          setBookings(data.bookings);
+          // Confirmed only. Payment sets "paid" and "confirmed" together, so
+          // this drops unpaid checkouts and cancelled bookings alike.
+          setBookings(data.bookings.filter((b: any) => b?.bookingStatus === "confirmed"));
         } else {
           setBookings([]);
         }

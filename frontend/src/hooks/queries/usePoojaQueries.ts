@@ -51,12 +51,14 @@ export const useNewPoojasQuery = () => {
  *
  * @param serverPreview Trimmed server-rendered subset, shown for the first paint
  * only — see the note on useNewChadhavaListQuery for why this is
- * `placeholderData` rather than `initialData`. */
-export const useCombinedPoojasQuery = (serverPreview?: unknown[] | null) => {
+ * `placeholderData` rather than `initialData`.
+ * @param enabled Lets the Navbar defer the fetch until its search box is used. */
+export const useCombinedPoojasQuery = (serverPreview?: unknown[] | null, enabled = true) => {
   return useQuery({
     queryKey: PUJA_KEYS.combined(),
     queryFn: fetchAllPoojasCombined,
     staleTime: 15 * 60 * 1000,
+    enabled,
     ...(serverPreview?.length ? { placeholderData: serverPreview } : {}),
   });
 };

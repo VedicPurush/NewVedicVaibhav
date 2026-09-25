@@ -1064,20 +1064,6 @@
   overflow: hidden;
 }
 
-.vv-msearch-all {
-  display: block;
-  width: calc(100% - 28px);
-  margin: 8px 14px 6px;
-  padding: 10px;
-  border: none;
-  border-radius: 10px;
-  background: linear-gradient(90deg, #fb923c, #f97316);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
 .vv-msearch-empty {
   padding: 18px 14px;
   text-align: center;

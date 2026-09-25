@@ -18,6 +18,10 @@ export interface IServiceVideo {
   orderId: string;
   /** Which offering the video belongs to — "chadhava", "puja", … */
   service: string;
+  /** The offering's own name, e.g. "Shri Krishna Janmashtami Special Chadhava".
+   *  One order can hold several of these — a Tri-Jyotirling chadhava is one
+   *  order id with a video per temple. */
+  serviceName: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -47,6 +51,7 @@ const serviceVideoSchema = new Schema<IServiceVideo>(
       default: SERVICE_CHADHAVA,
       index: true,
     },
+    serviceName: { type: String, trim: true, default: "" },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true },

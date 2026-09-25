@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
-import type { FilterQuery } from "mongoose";
 import ServiceVideo, { SERVICE_CHADHAVA, type IServiceVideo } from "./serviceVideo.model";
+import { classifyService, rawServiceOf, serviceNameOf } from "./serviceVideo.helpers";
 import NewChadhavaBooking from "../chadhava/newChadhavaBooking.model";
 import { normalizePhone } from "../../config/currency";
 
@@ -14,7 +14,10 @@ export type ServiceVideoStatus = "ready" | "coming_soon";
 interface ServiceVideoDto {
   _id: string;
   orderId: string;
+  /** "chadhava", "puja", … — see `classifyService`. */
   service: string;
+  /** The offering's own name, or "" when ops never recorded one. */
+  serviceName: string;
   name: string;
   status: ServiceVideoStatus;
   /** Absolute and safe to hand to an <iframe>/parser. Empty when not ready. */
@@ -49,21 +52,11 @@ export const toAbsoluteVideoUrl = (raw: unknown): string => {
   return value;
 };
 
-/**
- * The service this row belongs to.
- *
- * Also reads `"service "` — with a trailing space — because that key has been
- * written into the collection by hand. `doc.service` is then undefined, which
- * the chadhava filter treats as "old row, therefore chadhava"; harmless today,
- * but the first puja video saved that way would be served as a chadhava one.
- * Reading both spellings means a typo mis-files nothing.
- */
-const serviceOf = (doc: IServiceVideo): string => {
-  const raw = doc.service ?? (doc as unknown as Record<string, unknown>)["service "];
-  return String(raw ?? "").trim().toLowerCase() || SERVICE_CHADHAVA;
-};
-
-const toDto = (doc: IServiceVideo & { _id: unknown }): ServiceVideoDto => {
+const toDto = (
+  doc: IServiceVideo & { _id: unknown },
+  service: string,
+  serviceName: string,
+): ServiceVideoDto => {
   const videoUrl = toAbsoluteVideoUrl(doc.link);
   /* Only an absolute http(s) URL is playable. `toAbsoluteVideoUrl` hands back
      anything it cannot place untouched, so a placeholder ops typed in the link
@@ -74,7 +67,8 @@ const toDto = (doc: IServiceVideo & { _id: unknown }): ServiceVideoDto => {
   return {
     _id: String(doc._id),
     orderId: doc.orderId ?? "",
-    service: serviceOf(doc),
+    service,
+    serviceName,
     name: doc.name ?? "",
     status: ready ? "ready" : "coming_soon",
     videoUrl: ready ? videoUrl : "",
@@ -82,16 +76,6 @@ const toDto = (doc: IServiceVideo & { _id: unknown }): ServiceVideoDto => {
     createdAt: doc.createdAt,
   };
 };
-
-/**
- * Match on `service`, tolerating rows the admin tool wrote before it knew about
- * the field. Those predate every non-chadhava offering, so a missing value can
- * only mean chadhava — for any other service, absence is just absence.
- */
-const serviceFilter = (service: string): FilterQuery<IServiceVideo> =>
-  service === SERVICE_CHADHAVA
-    ? { $or: [{ service: SERVICE_CHADHAVA }, { service: { $exists: false } }, { service: "" }] }
-    : { service };
 
 /** `?service=` — defaults to chadhava, `all` turns the filter off entirely. */
 const requestedService = (req: Request): string =>
@@ -104,7 +88,8 @@ const requestedService = (req: Request): string =>
  * Scoped to bookings belonging to THIS phone, which is a correctness rule and
  * not just caution: a handful of rows carry an order id that belongs to another
  * devotee's booking, and an unscoped join would print a stranger's puja title
- * (and temple) on this devotee's card.
+ * (and temple) on this devotee's card. A hit also settles the row's service —
+ * see `classifyService`.
  */
 const titlesForOrderIds = async (
   orderIds: string[],
@@ -148,24 +133,32 @@ export const getServiceVideosByPhone = async (req: Request, res: Response): Prom
   }
 
   const service = requestedService(req);
-  const docs = await ServiceVideo.find({
-    number: phone,
-    isActive: true,
-    ...(service === "all" ? {} : serviceFilter(service)),
-  })
+  const docs = await ServiceVideo.find({ number: phone, isActive: true })
     .sort({ createdAt: -1 })
     .lean<(IServiceVideo & { _id: unknown })[]>();
 
-  /* No filter on videoUrl. A row with no link yet is ops saying "this booking's
-     video is on its way", and the devotee is better told that than shown
-     nothing — which is indistinguishable from us having forgotten them. */
-  const videos = docs.map(toDto);
   const titles = await titlesForOrderIds(
-    videos.map((v) => v.orderId).filter(Boolean),
+    docs.map((d) => d.orderId).filter(Boolean),
     phone,
   );
 
-  for (const video of videos) Object.assign(video, titles.get(video.orderId) ?? {});
+  /* The service filter runs here, through `classifyService`, and not in the
+     query: rows the admin tool wrote before its fix hold the offering's name in
+     `service`, so an exact match on "chadhava" dropped every such row from the
+     profile while /my-videos (`all`, no filter) still showed it. One phone has
+     a handful of rows, so filtering in memory costs nothing.
+
+     No filter on videoUrl. A row with no link yet is ops saying "this booking's
+     video is on its way", and the devotee is better told that than shown
+     nothing — which is indistinguishable from us having forgotten them. */
+  const videos: ServiceVideoDto[] = [];
+  for (const doc of docs) {
+    const booking = titles.get(doc.orderId);
+    const raw = rawServiceOf(doc);
+    const rowService = classifyService(raw, Boolean(booking));
+    if (service !== "all" && rowService !== service) continue;
+    videos.push({ ...toDto(doc, rowService, serviceNameOf(doc, raw)), ...booking });
+  }
 
   res.status(200).json({ success: true, count: videos.length, videos });
 };

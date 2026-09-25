@@ -18,7 +18,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import MenuIcon from "@mui/icons-material/Menu";
 import MenuOpenIcon from "@mui/icons-material/MenuOpen";
-import { useAllPoojas } from "@/hooks/useAllPoojas";
+import { useCombinedPoojasQuery } from "@/hooks/useAllPoojas";
 import { useNewChadhavaListQuery } from "@/hooks/queries/useNewChadhavaListQuery";
 import { useExclusivePoojasQuery } from "@/hooks/queries/usePoojaQueries";
 import { useAllBlogs } from "@/hooks/useAllBlogs";
@@ -30,7 +30,7 @@ import TempleHinduIcon from "@mui/icons-material/TempleHindu";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "@/store/store";
 import { setShowLoginCard } from "@/store/userSlice";
@@ -64,6 +64,45 @@ const FUSE_OPTIONS: IFuseOptions<Suggestion> = {
   distance: 100,
   minMatchCharLength: 2,
   ignoreLocation: true,
+};
+
+type SuggestionType = "puja" | "blog" | "chadhava" | "exclusive";
+
+/**
+ * API rows → suggestions. Guards the two ways a list can break the search: a
+ * response that is not an array, and a row with no usable name — the substring
+ * fallback calls `.toLowerCase()` on every name, and one missing title there
+ * throws inside an effect and takes the whole page down.
+ */
+const toSuggestions = (
+  rows: unknown,
+  pick: (row: any) => { id?: unknown; name?: unknown; image?: unknown },
+): Suggestion[] =>
+  (Array.isArray(rows) ? rows : [])
+    .map((row) => {
+      const s = pick(row ?? {});
+      return {
+        id: String(s.id ?? ""),
+        name: String(s.name ?? "").trim(),
+        image: String(s.image ?? ""),
+      };
+    })
+    .filter((s) => s.id && s.name);
+
+/**
+ * Whether the chadhava listing shows this chadhava — the same rule as
+ * ChadhavaList3: active, and its first date not yet past. Search offers only
+ * what the listing does; most chadhavas in the feed are closed ones.
+ */
+const isChadhavaListed = (item: any): boolean => {
+  const active = [true, "true", 1, "1"].includes(item?.isActive);
+  if (!active) return false;
+  const dateStr = item.availableDates?.[0];
+  if (!dateStr) return true;
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return true;
+  date.setHours(23, 59, 59, 999);
+  return new Date() <= date;
 };
 
 /** Mobile menu — same reasoning as LoginModel above. */
@@ -241,74 +280,47 @@ const Navbar = ({ activeIndex }: { activeIndex?: string }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Types required for local casting of DTOs
-
-  interface BlogDTO {
-    _id: string;
-    title: string;
-    images: string[];
-  }
-
-  const { data: poojasDTO = [], isLoading: loadingPoojas } = useAllPoojas(searchActivated);
+  /* Pujas come from the combined list — legacy `poojas` plus `newpoojas`, the
+     same one the puja page lists. `/fetch-all-pooja`, used here before, returns
+     nothing any more, so no puja ever appeared in search. */
+  const { data: poojasDTO = [], isLoading: loadingPoojas } = useCombinedPoojasQuery(null, searchActivated);
   const { data: chadhavaDTO = [], isLoading: loadingChadhava } = useNewChadhavaListQuery(searchActivated);
   const { data: exclusiveDTO = [], isLoading: loadingExclusive } = useExclusivePoojasQuery(searchActivated);
+  const { data: blogsDTO = [], isLoading: loadingBlogs } = useAllBlogs(undefined, searchActivated);
 
-  // Some hooks are not typed and return `unknown` (or a different DTO type).
-  // We normalize here locally for navbar suggestions.
-
-  const { data: blogsDTORaw = [], isLoading: loadingBlogs } = useAllBlogs(undefined, searchActivated) as {
-    data?: unknown;
-    isLoading: boolean;
-  };
-
-  const blogsDTO = (blogsDTORaw ?? []) as BlogDTO[];
-
-  interface PujaDTO {
-    _id: string;
-    title: string;
-    poojaCardImage?: string;
-    images?: string[];
-  }
   // Normalize
-  const poojas = useMemo(
+  const exclusivePoojas = useMemo(
     () =>
-      poojasDTO.map((pooja: PujaDTO) => ({
-        id: pooja._id,
-        name: pooja.title,
-        image: pooja.poojaCardImage || pooja.images?.[0] || "",
+      toSuggestions(exclusiveDTO, (p) => ({
+        id: p._id,
+        name: p.title || p.Title || p.poojaName,
+        image: p.poojaCardImage || p.images?.[0],
       })),
-    [poojasDTO],
+    [exclusiveDTO],
   );
 
+  const poojas = useMemo(() => {
+    // Exclusive pujas have a column of their own — list each puja once.
+    const exclusiveIds = new Set(exclusivePoojas.map((p) => p.id));
+    return toSuggestions(poojasDTO, (p) => ({
+      id: p._id,
+      name: p.title,
+      image: p.poojaCardImage || p.images?.[0],
+    })).filter((p) => !exclusiveIds.has(p.id));
+  }, [poojasDTO, exclusivePoojas]);
 
   const blogs = useMemo(
-    () =>
-      blogsDTO.map((blog: BlogDTO) => ({
-        id: blog._id,
-        name: blog.title,
-        image: blog.images?.[0],
-      })),
+    () => toSuggestions(blogsDTO, (b) => ({ id: b._id, name: b.title, image: b.images?.[0] })),
     [blogsDTO],
   );
 
   const chadhavas = useMemo(
     () =>
-      (chadhavaDTO || []).map((c: any) => ({
-        id: c._id,
-        name: c.chadhavaName,
-        image: c.chadhavaWebCardImage?.location || "",
-      })),
+      toSuggestions(
+        (Array.isArray(chadhavaDTO) ? chadhavaDTO : []).filter(isChadhavaListed),
+        (c) => ({ id: c._id, name: c.chadhavaName, image: c.chadhavaWebCardImage?.location }),
+      ),
     [chadhavaDTO],
-  );
-
-  const exclusivePoojas = useMemo(
-    () =>
-      (exclusiveDTO || []).map((p: any) => ({
-        id: p._id,
-        name: p.title || p.Title || p.poojaName || "",
-        image: p.poojaCardImage || p.images?.[0] || "",
-      })),
-    [exclusiveDTO],
   );
 
   /**
@@ -335,7 +347,11 @@ const Navbar = ({ activeIndex }: { activeIndex?: string }) => {
     let cancelled = false;
     import("fuse.js")
       .then((mod) => {
-        if (!cancelled) setFuseCtor(mod.default);
+        // The updater form is required. Handed a bare function, setState CALLS
+        // it as `updater(prev)` — and Fuse is a class, so `Fuse(prev)` threw
+        // "Class constructor Fuse cannot be invoked without 'new'" and crashed
+        // the page on the first keystroke in either search box.
+        if (!cancelled) setFuseCtor(() => mod.default);
       })
       .catch(() => {
         // Chunk failed (offline, deploy mid-session) — substring search stands in.
@@ -382,6 +398,47 @@ const Navbar = ({ activeIndex }: { activeIndex?: string }) => {
 
   const debouncedQuery = useDebounce(searchQuery, 300);
 
+  /**
+   * "Loading…" rather than "No results": while the lists are fetching, and
+   * while a keystroke is still inside the debounce with nothing to show yet —
+   * otherwise every pause in typing flashed "No results found" for 300ms
+   * before the matches arrived.
+   */
+  const hasSuggestions =
+    chadhavaSuggestions.length > 0 ||
+    pujaSuggestions.length > 0 ||
+    exclusiveSuggestions.length > 0 ||
+    blogSuggestions.length > 0;
+  const searchPending = searchQuery.trim() !== debouncedQuery.trim();
+  const showSearchLoading =
+    loadingPoojas ||
+    loadingBlogs ||
+    loadingChadhava ||
+    loadingExclusive ||
+    (searchPending && !hasSuggestions);
+
+  /**
+   * One query's matches, per column, at most 10 each: fuzzy once fuse.js has
+   * loaded, a plain substring match until then (or when fuzzy finds nothing).
+   * Shared by the dropdown and by Enter, so both rank the same way.
+   */
+  const findSuggestions = useCallback(
+    (query: string): Record<SuggestionType, Suggestion[]> => {
+      const lowerQ = query.toLowerCase();
+      const match = (fuse: FuseType<Suggestion> | null, items: Suggestion[]) => {
+        const fuzzy = fuse?.search(query).map((r) => r.item) ?? [];
+        return (fuzzy.length ? fuzzy : items.filter((s) => s.name.toLowerCase().includes(lowerQ))).slice(0, 10);
+      };
+      return {
+        puja: match(fusePoojas, poojas),
+        blog: match(fuseBlogs, blogs),
+        chadhava: match(fuseChadhavas, chadhavas),
+        exclusive: match(fuseExclusive, exclusivePoojas),
+      };
+    },
+    [fusePoojas, poojas, fuseBlogs, blogs, fuseChadhavas, chadhavas, fuseExclusive, exclusivePoojas],
+  );
+
   useEffect(() => {
     if (!debouncedQuery.trim()) {
       /**
@@ -403,51 +460,19 @@ const Navbar = ({ activeIndex }: { activeIndex?: string }) => {
       return;
     }
 
-    const lowerQ = debouncedQuery.toLowerCase();
+    const next = findSuggestions(debouncedQuery);
 
-    // Fuzzy search for Poojas
-    const pujaResults = fusePoojas?.search(debouncedQuery).map((r) => r.item) ?? [];
-    const nextPujaSuggestions = (
-      pujaResults.length
-        ? pujaResults
-        : poojas.filter((p: Suggestion) => p.name.toLowerCase().includes(lowerQ))
-    ).slice(0, 10);
-
-    // Fuzzy search for Blogs
-    const blogResults = fuseBlogs?.search(debouncedQuery).map((r) => r.item) ?? [];
-    const nextBlogSuggestions = (
-      blogResults.length
-        ? blogResults
-        : blogs.filter((b: Suggestion) => b.name.toLowerCase().includes(lowerQ))
-    ).slice(0, 10);
-
-    // Fuzzy search for Chadhavas
-    const chadhavaResults = fuseChadhavas?.search(debouncedQuery).map((r) => r.item) ?? [];
-    const nextChadhavaSuggestions = (
-      chadhavaResults.length
-        ? chadhavaResults
-        : chadhavas.filter((c: Suggestion) => c.name.toLowerCase().includes(lowerQ))
-    ).slice(0, 10);
-
-    // Fuzzy search for Exclusive Poojas
-    const exclusiveResults = fuseExclusive?.search(debouncedQuery).map((r) => r.item) ?? [];
-    const nextExclusiveSuggestions = (
-      exclusiveResults.length
-        ? exclusiveResults
-        : exclusivePoojas.filter((p: Suggestion) => p.name.toLowerCase().includes(lowerQ))
-    ).slice(0, 10);
-
-    if (JSON.stringify(nextPujaSuggestions) !== JSON.stringify(pujaSuggestions)) {
-      setPujaSuggestions(nextPujaSuggestions);
+    if (JSON.stringify(next.puja) !== JSON.stringify(pujaSuggestions)) {
+      setPujaSuggestions(next.puja);
     }
-    if (JSON.stringify(nextBlogSuggestions) !== JSON.stringify(blogSuggestions)) {
-      setBlogSuggestions(nextBlogSuggestions);
+    if (JSON.stringify(next.blog) !== JSON.stringify(blogSuggestions)) {
+      setBlogSuggestions(next.blog);
     }
-    if (JSON.stringify(nextChadhavaSuggestions) !== JSON.stringify(chadhavaSuggestions)) {
-      setChadhavaSuggestions(nextChadhavaSuggestions);
+    if (JSON.stringify(next.chadhava) !== JSON.stringify(chadhavaSuggestions)) {
+      setChadhavaSuggestions(next.chadhava);
     }
-    if (JSON.stringify(nextExclusiveSuggestions) !== JSON.stringify(exclusiveSuggestions)) {
-      setExclusiveSuggestions(nextExclusiveSuggestions);
+    if (JSON.stringify(next.exclusive) !== JSON.stringify(exclusiveSuggestions)) {
+      setExclusiveSuggestions(next.exclusive);
     }
     // NOTE: deliberately does NOT force the dropdown open here.
     //
@@ -461,25 +486,14 @@ const Navbar = ({ activeIndex }: { activeIndex?: string }) => {
   }, [
     debouncedQuery,
     searchQuery,
-    poojas,
-    blogs,
+    findSuggestions,
     pujaSuggestions,
     blogSuggestions,
     chadhavaSuggestions,
     exclusiveSuggestions,
-    chadhavas,
-    exclusivePoojas,
-    fuseChadhavas,
-    fusePoojas,
-    fuseBlogs,
-    fuseExclusive,
   ]);
 
-  const handleSuggestionClick = (
-    id: string,
-    type: "puja" | "blog" | "chadhava" | "exclusive",
-    name?: string,
-  ) => {
+  const handleSuggestionClick = (id: string, type: SuggestionType, name?: string) => {
     // Hide suggestions and clear search bar for better UX
     setIsSuggestionsOpen(false);
     setSearchQuery("");
@@ -498,6 +512,32 @@ const Navbar = ({ activeIndex }: { activeIndex?: string }) => {
     } else if (type === "exclusive") {
       router.push(`/services/puja/${detailSlug}/select-package`);
     }
+  };
+
+  /**
+   * Enter opens the best match for what is in the box right now. It used to
+   * send the query to `/search`, a page that has never existed — every Enter
+   * landed on a 404.
+   *
+   * Searches afresh rather than reading the dropdown, which lags the input by
+   * the 300ms debounce: typing "shiv" and pressing Enter at once would open the
+   * top result of the previous query. A name that contains the query outright
+   * beats a fuzzy near-miss; otherwise the first result in display order wins.
+   * Returns false when there is nothing to open yet (lists still loading), so
+   * the dropdown stays up.
+   */
+  const openTopSuggestion = (): boolean => {
+    const query = searchQuery.trim();
+    if (!query) return false;
+    const found = findSuggestions(query);
+    const ranked = (["chadhava", "puja", "exclusive", "blog"] as SuggestionType[]).flatMap((type) =>
+      found[type].map((s) => ({ s, type })),
+    );
+    const lowerQ = query.toLowerCase();
+    const pick = ranked.find(({ s }) => s.name.toLowerCase().includes(lowerQ)) ?? ranked[0];
+    if (!pick) return false;
+    handleSuggestionClick(pick.s.id, pick.type, pick.s.name);
+    return true;
   };
 
   const [scrolled, setScrolled] = useState(false);
@@ -851,25 +891,16 @@ const Navbar = ({ activeIndex }: { activeIndex?: string }) => {
                         }
                       }} // Open suggestions on focus
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          const query = (e.target as HTMLInputElement).value.trim();
-                          if (query) router.push(`/search?q=${encodeURIComponent(query)}`);
-                        }
+                        if (e.key === "Enter") openTopSuggestion();
                       }}
                     />
                   </div>
                   {isSuggestionsOpen &&
                     searchQuery.trim() !== "" && ( // Also check if query is not just empty spaces
                       <div className="suggestions-dropdown" ref={desktopSuggestionsRef}>
-                        {loadingPoojas ||
-                        loadingBlogs ||
-                        loadingChadhava ||
-                        loadingExclusive ? (
+                        {showSearchLoading ? (
                           <div className="no-results-global"> {t("Loading...")}</div>
-                        ) : pujaSuggestions.length > 0 ||
-                          blogSuggestions.length > 0 ||
-                          chadhavaSuggestions.length > 0 ||
-                          exclusiveSuggestions.length > 0 ? (
+                        ) : hasSuggestions ? (
                           <>
                             {/* Chadhava Column */}
                             {chadhavaSuggestions.length > 0 && (
@@ -1240,14 +1271,7 @@ const Navbar = ({ activeIndex }: { activeIndex?: string }) => {
                               if (searchQuery.trim().length > 0) setIsSuggestionsOpen(true);
                             }}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                const query = (e.target as HTMLInputElement).value.trim();
-                                if (query) {
-                                  setIsSuggestionsOpen(false);
-                                  setIsDrawerVisible(false);
-                                  router.push(`/search?q=${encodeURIComponent(query)}`);
-                                }
-                              }
+                              if (e.key === "Enter" && openTopSuggestion()) setIsDrawerVisible(false);
                             }}
                           />
                           {searchQuery.trim() !== "" && (
@@ -1268,12 +1292,9 @@ const Navbar = ({ activeIndex }: { activeIndex?: string }) => {
 
                         {isSuggestionsOpen && searchQuery.trim() !== "" && (
                           <div className="vv-msearch-results">
-                            {loadingPoojas || loadingBlogs || loadingChadhava || loadingExclusive ? (
+                            {showSearchLoading ? (
                               <div className="vv-msearch-empty">{t("Loading...")}</div>
-                            ) : chadhavaSuggestions.length > 0 ||
-                              pujaSuggestions.length > 0 ||
-                              exclusiveSuggestions.length > 0 ||
-                              blogSuggestions.length > 0 ? (
+                            ) : hasSuggestions ? (
                               <>
                                 {(
                                   [
@@ -1281,12 +1302,15 @@ const Navbar = ({ activeIndex }: { activeIndex?: string }) => {
                                     ["Puja", pujaSuggestions, "puja"],
                                     ["Personalized Puja", exclusiveSuggestions, "exclusive"],
                                     ["Blogs", blogSuggestions, "blog"],
-                                  ] as [string, Suggestion[], "chadhava" | "puja" | "exclusive" | "blog"][]
+                                  ] as [string, Suggestion[], SuggestionType][]
                                 ).map(([label, items, type]) =>
                                   items.length === 0 ? null : (
                                     <div className="vv-msearch-group" key={type}>
                                       <h4 className="vv-msearch-group-title">{label}</h4>
-                                      {items.slice(0, 5).map((sugg) => (
+                                      {/* Every match (at most 10 a group) — there is no
+                                          results page to send the rest to, and the
+                                          panel scrolls on its own. */}
+                                      {items.map((sugg) => (
                                         <div
                                           key={sugg.id}
                                           className="vv-msearch-item"
@@ -1309,20 +1333,6 @@ const Navbar = ({ activeIndex }: { activeIndex?: string }) => {
                                     </div>
                                   ),
                                 )}
-
-                                <button
-                                  type="button"
-                                  className="vv-msearch-all"
-                                  onClick={() => {
-                                    const query = searchQuery.trim();
-                                    if (!query) return;
-                                    setIsSuggestionsOpen(false);
-                                    setIsDrawerVisible(false);
-                                    router.push(`/search?q=${encodeURIComponent(query)}`);
-                                  }}
-                                >
-                                  {t("View all results")}
-                                </button>
                               </>
                             ) : (
                               <div className="vv-msearch-empty">

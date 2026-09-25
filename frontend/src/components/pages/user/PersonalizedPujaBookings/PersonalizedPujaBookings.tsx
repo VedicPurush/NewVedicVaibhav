@@ -52,8 +52,10 @@ const PersonalisedPujaBookings = () => {
     api
       .get(`/get-personalizedpooja-by-number/${phone}`)
       .then(({ data }) => {
+        // Paid only: the row is written before payment, so an unpaid one is
+        // an abandoned checkout, not a booking.
         const list: PersonalizedBooking[] = Array.isArray(data?.data)
-          ? data.data
+          ? data.data.filter((b: PersonalizedBooking) => b?.paymentStatus)
           : [];
         // Sort newest first
         list.sort((a, b) => {

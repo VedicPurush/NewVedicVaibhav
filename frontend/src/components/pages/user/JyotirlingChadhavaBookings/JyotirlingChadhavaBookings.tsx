@@ -205,7 +205,9 @@ const JyotirlingChadhavaBookings: React.FC = () => {
         );
 
         if (res.data.success) {
-          setBookings(res.data.data);
+          // Confirmed only — "payment_pending" and "abandoned_cart" never paid.
+          const list: Booking[] = Array.isArray(res.data.data) ? res.data.data : [];
+          setBookings(list.filter((b) => b?.status === "confirmed"));
         } else {
           setError("Failed to fetch bookings.");
         }

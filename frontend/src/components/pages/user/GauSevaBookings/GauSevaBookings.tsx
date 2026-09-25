@@ -197,7 +197,8 @@ const GauSevaBookings = () => {
     }
 
     fetchUserGauSevaBookingsApi(phone)
-      .then(setBookings)
+      // Confirmed only — "initiated" is a checkout that never paid.
+      .then((list) => setBookings(list.filter((b) => b?.bookingStatus === "confirmed")))
       .catch(() => setBookings([]))
       .finally(() => setLoading(false));
   }, []);

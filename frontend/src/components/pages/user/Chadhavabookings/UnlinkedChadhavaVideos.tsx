@@ -16,7 +16,7 @@ import type { ServiceVideo } from "@/hooks/queries/useServiceVideosQuery";
  * Renders nothing when everything matched, which is the normal case.
  */
 const UnlinkedChadhavaVideos: React.FC<{ videos: ServiceVideo[] }> = ({ videos }) => {
-  const [openUrl, setOpenUrl] = useState<string | null>(null);
+  const [open, setOpen] = useState<ServiceVideo | null>(null);
 
   if (videos.length === 0) return null;
 
@@ -51,12 +51,17 @@ const UnlinkedChadhavaVideos: React.FC<{ videos: ServiceVideo[] }> = ({ videos }
             }}
           >
             <span style={{ fontSize: 12.5, color: "rgba(0,0,0,0.65)", minWidth: 0, wordBreak: "break-word" }}>
+              {video.serviceName && (
+                <span style={{ display: "block", fontWeight: 600, color: "rgba(0,0,0,0.8)" }}>
+                  {video.serviceName}
+                </span>
+              )}
               Order ID: {video.orderId || "N/A"}
             </span>
             {video.status === "ready" ? (
               <button
                 type="button"
-                onClick={() => setOpenUrl(video.videoUrl)}
+                onClick={() => setOpen(video)}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -98,12 +103,12 @@ const UnlinkedChadhavaVideos: React.FC<{ videos: ServiceVideo[] }> = ({ videos }
         ))}
       </div>
 
-      {openUrl && (
+      {open && (
         <ServiceVideoModal
           open
-          onClose={() => setOpenUrl(null)}
-          videoUrl={openUrl}
-          title="Your Chadhava Video"
+          onClose={() => setOpen(null)}
+          videoUrl={open.videoUrl}
+          title={open.serviceName || "Your Chadhava Video"}
         />
       )}
     </div>

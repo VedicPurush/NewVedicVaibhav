@@ -9,6 +9,9 @@ export interface ServiceVideo {
   orderId: string;
   /** "chadhava", "puja", … */
   service: string;
+  /** The offering's own name — for a Tri-Jyotirling order, the temple's.
+   *  Empty when ops never recorded one. */
+  serviceName?: string;
   name: string;
   /** "coming_soon" = ops has filed this booking's row but not the link yet. */
   status: "ready" | "coming_soon";

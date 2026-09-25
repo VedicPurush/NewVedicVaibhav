@@ -30,6 +30,11 @@ const formatDate = (iso?: string): string => {
 const serviceLabel = (service: string): string =>
   service === "puja" ? "Puja" : service === "chadhava" ? "Chadhava" : service;
 
+/** The video's own name first: one Tri-Jyotirling order holds a video per
+ *  temple, and only `serviceName` tells them apart. */
+const videoTitle = (video: ServiceVideo): string =>
+  video.serviceName || video.pujaTitle || `${serviceLabel(video.service)} Video`;
+
 /* ─── How it works ─────────────────────────────────────────────────────────── */
 
 const STEPS = [
@@ -75,7 +80,7 @@ const FAQS = [
 const VideoCard: React.FC<{ video: ServiceVideo; onPlay: () => void }> = ({ video, onPlay }) => {
   const [imgFailed, setImgFailed] = useState(false);
   const parsed = parseVideoLink(video.videoUrl, video.pujaTitle || "Your video");
-  const title = video.pujaTitle || `${serviceLabel(video.service)} Video`;
+  const title = videoTitle(video);
   const date = formatDate(video.pujaDate) || formatDate(video.createdAt);
   const ready = video.status === "ready";
 
@@ -372,7 +377,7 @@ const MyVideos = () => {
           open
           onClose={() => setPlaying(null)}
           videoUrl={playing.videoUrl}
-          title={playing.pujaTitle || `Your ${serviceLabel(playing.service)} Video`}
+          title={videoTitle(playing)}
         />
       )}
     </div>

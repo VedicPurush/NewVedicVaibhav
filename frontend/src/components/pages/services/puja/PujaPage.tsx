@@ -450,7 +450,7 @@ const PujaContent: React.FC = () => {
       )}
 
       {/* ── Mobile list ── */}
-      <div className="md:hidden px-4 py-6">
+      <div className="md:hidden px-4 pt-2 pb-6">
         {sortedPujaData.length === 0 ? (
           <EmptyPujaState tab={activeTab} />
         ) : (

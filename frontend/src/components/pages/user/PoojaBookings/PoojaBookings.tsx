@@ -70,8 +70,11 @@ const PoojaBookings = () => {
 
         const list = data?.poojaBooked;
         if (Array.isArray(list)) {
-          // latest → oldest
-          const sorted = [...list].sort((a, b) => getSortKey(b) - getSortKey(a));
+          // Confirmed only: `isPending` rows come from the pending-checkout
+          // collection — payments that never went through. Latest → oldest.
+          const sorted = list
+            .filter((b) => !b?.isPending)
+            .sort((a, b) => getSortKey(b) - getSortKey(a));
           setBookings(sorted);
         } else {
           message.error("No puja bookings found.");

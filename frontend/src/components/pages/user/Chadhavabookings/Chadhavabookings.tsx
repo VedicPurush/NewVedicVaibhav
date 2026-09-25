@@ -43,8 +43,6 @@ interface Booking {
   accessories?: any[]; // can be string[] or object[] from backend
   comboSelections?: any[]; // present only for combo bookings
   createdAt?: string; // if API provides
-  // normalized fields:
-  _pendingId?: string;
 }
 
 const customScrollbarStyle = `
@@ -225,84 +223,22 @@ const ChadhavaBookings = () => {
           const val = result.value as any; // { type, data/error }
           if (val.error || !val.data?.success) return;
 
+          /* Only confirmed bookings are listed. A pending or failed row is a
+             checkout the devotee abandoned or that never went through — the
+             row is written before payment so the order id exists when the
+             gateway opens — and listing it reads as a booking that went wrong. */
           if (val.type === "old") {
-            const data = val.data;
-            // --- Old API Handling ---
-            if (data.bookingDetails) {
-              const arr = Array.isArray(data.bookingDetails)
-                ? data.bookingDetails
-                : [data.bookingDetails];
-              allBookings.push(...arr);
-            } else {
-              // Confirmed + Pending arrays
-              const confirmed = Array.isArray(data.confirmedBookings)
-                ? data.confirmedBookings
-                : [];
-              const pendingRaw = Array.isArray(data.pendingBookings)
-                ? data.pendingBookings
-                : [];
-
-              const confirmedNormalized = confirmed.map((c: any) => ({
-                ...c,
-                status: "confirmed",
-              }));
-              const pendingNormalized = pendingRaw.map((p: any) => {
-                const details = p?.bookingDetails ?? p;
-
-                // Handle New API structure within Pending bookings
-                if (details?.puja?.chadhavaName || details?.puja?.bookedSections) {
-                  const accessories =
-                    details.puja?.bookedSections?.flatMap((sec: any) =>
-                      sec.items.map((it: any) => ({
-                        name: it.itemName,
-                        quantity: it.quantity,
-                        image: it.itemImage?.location,
-                        price: it.itemPrice,
-                        desc: it.itemDesc,
-                      }))
-                    ) || [];
-
-                  const offers =
-                    details.puja?.offerApplied?.map((off: any) => ({
-                      name: off.offerName,
-                      quantity: 1,
-                      image: off.images?.[0]?.location,
-                      price: off.offerPrice,
-                      desc: off.offerDescription,
-                    })) || [];
-
-                  if (offers.length > 0) accessories.push(...offers);
-
-                  return {
-                    ...details,
-                    puja: {
-                      title: details.puja?.chadhavaName,
-                      temple: details.puja?.mandir?.nameEnglish,
-                      date: details.puja?.date,
-                    },
-                    accessories: accessories,
-                    comboSelections: [],
-                    _pendingId: p?._id,
-                    status: "pending",
-                    createdAt: details.createdAt ?? p?.createdAt,
-                  };
-                }
-
-                return {
-                  ...details,
-                  comboSelections:
-                    details?.comboSelections ?? p?.comboSelections ?? [],
-                  _pendingId: p?._id,
-                  status: "pending",
-                  createdAt: details.createdAt ?? p?.createdAt,
-                };
-              });
-              allBookings.push(...confirmedNormalized, ...pendingNormalized);
-            }
+            // --- Old API Handling --- (its pendingBookings are skipped, see above)
+            const confirmed = Array.isArray(val.data.confirmedBookings)
+              ? val.data.confirmedBookings
+              : [];
+            allBookings.push(
+              ...confirmed.map((c: any) => ({ ...c, status: "confirmed" }))
+            );
           } else if (val.type === "new") {
             // --- New API Handling ---
             const newBookings = Array.isArray(val.data.bookings)
-              ? val.data.bookings
+              ? val.data.bookings.filter((b: any) => b?.status === "confirmed")
               : [];
             const mappedNew = newBookings.map((b: any) => {
               // Flatten bookedSections into accessories for card display
@@ -436,11 +372,11 @@ const ChadhavaBookings = () => {
           return (
             <Col
               span={24}
-              key={b.orderID ?? b._pendingId ?? b.transactionID ?? `bk-${i}`}
+              key={b.orderID ?? b.transactionID ?? `bk-${i}`}
             >
               <ChadhavaBookingCard
                 chadhavaId={b._id ?? "N/A"}
-                orderID={b.orderID ?? b._pendingId ?? b.transactionID ?? "N/A"}
+                orderID={b.orderID ?? b.transactionID ?? "N/A"}
                 transactionID={b.transactionID ?? "N/A"}
                 name={b.name ?? "N/A"}
                 pujaTitle={b?.puja?.title ?? "N/A"}

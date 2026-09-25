@@ -5,18 +5,13 @@ import { motion } from "framer-motion";
 import SpaIcon from "@mui/icons-material/Spa";
 import { useNewChadhavaListQuery } from "@/hooks/queries/useNewChadhavaListQuery";
 import Layout from "@/components/layout/Layout";
-import BannerShriBankeBihariji from "@/components/pages/services/puja/shri-banke-bihari/BannerShriBankeBihariji";
-import StripOfPujaBanner from "@/components/pages/services/puja/shri-banke-bihari/StripOfPujaBanner";
 import ChadhavaCard3 from "./ChadhavaCard3";
 
 const ChadhavaContent3: React.FC = () => {
     const { data: listData = [], isLoading: loading, isError: error } = useNewChadhavaListQuery();
 
     return (
-        <section className="bg-gradient-to-tr from-yellow-50 via-orange-100 to-orange-200 py-10 md:py-0 px-4 sm:px-6 ">
-            <BannerShriBankeBihariji/>
-            <StripOfPujaBanner />
-
+        <section className="pb-10 md:py-0 px-4 sm:px-6 ">
             {/* Desktop-only banner */}
             <div className="hidden md:flex justify-center mb-8">
                 <div className="rounded-2xl shadow-md border border-yellow-300 bg-gradient-to-r from-[#FFF9EC] via-[#FFE1B2] to-[#FFD399] px-12 py-5 flex items-center gap-5">
@@ -105,12 +100,11 @@ const ChadhavaContent3: React.FC = () => {
     );
 };
 
+/* No background of its own — the site-wide artwork (globals.css, body::before)
+   shows through, as on the puja page. A fill here also sat behind the fixed,
+   transparent header and turned it into a flat cream band. */
 const ChadhavaList3: React.FC = () => {
-    return (
-        <div className="bg-orange-100">
-            <Layout content={<ChadhavaContent3 />} activeIndex="chadhava" />
-        </div>
-    );
+    return <Layout content={<ChadhavaContent3 />} activeIndex="chadhava" />;
 };
 
 export default ChadhavaList3;

@@ -241,7 +241,9 @@ const BankeBihariBookings = () => {
       }
       try {
         const { data } = await api.get(`/bb-seva/bookings/mobile/${stored}`);
-        setBookings(Array.isArray(data) ? data : data.bookings || []);
+        const list: Booking[] = Array.isArray(data) ? data : data.bookings || [];
+        // Paid only — pending and failed rows are checkouts that never went through.
+        setBookings(list.filter((b) => b?.paymentStatus === "paid"));
       } catch (err) {
         console.error("Error fetching BB bookings:", err);
       } finally {
