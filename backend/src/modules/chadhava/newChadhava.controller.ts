@@ -119,6 +119,7 @@ const buildBookingDetails = async ({
     itemDesc: src.desc ?? src.comboDescription ?? "",
     itemImage: src.image ? { location: src.image } : null,
     type,
+    tags: Array.isArray(src.tags) ? src.tags : [],
     quantity: src.quantity ?? 1,
   });
 
@@ -191,6 +192,7 @@ const buildBookingDetails = async ({
       date: new Date(payload.chadhavaDetails?.date),
       description: chadhavaDoc.description ?? "",
       rating: chadhavaDoc.rating ?? null,
+      isPitruPuja: !!chadhavaDoc.isPitruPuja,
 
       bookedSections: [
         {
@@ -212,7 +214,21 @@ const buildBookingDetails = async ({
 
     prasad: buildPrasad(payload.prasadDetails),
 
-    familyMembers: payload.family || [],
+    // Pitru Puja chadhavas hide the Family Members step entirely — never
+    // persist it for these bookings, even if a client sends it anyway.
+    familyMembers: chadhavaDoc.isPitruPuja ? [] : payload.family || [],
+    isPitruPuja: !!chadhavaDoc.isPitruPuja,
+    pitruPujaDetails: (() => {
+      if (!chadhavaDoc.isPitruPuja) return null;
+      const ancestorNames: string[] = Array.isArray(payload.pitruPujaDetails?.ancestorNames)
+        ? payload.pitruPujaDetails.ancestorNames.map((n: string) => String(n).trim()).filter(Boolean)
+        : [];
+      // Server-computed, not trusted from the client — the first ancestor is
+      // covered by the base price, every one after that costs pitruPujaPrice.
+      const pricePerExtraAncestor = Number(chadhavaDoc.pitruPujaPrice) || 0;
+      const extraAncestorFee = Math.max(ancestorNames.length - 1, 0) * pricePerExtraAncestor;
+      return { ancestorNames, pricePerExtraAncestor, extraAncestorFee };
+    })(),
 
     bookingDate: new Date(),
 
@@ -546,6 +562,7 @@ export const initiateChadhavaPayment = async (req: Request, res: Response) => {
       address: body.address ?? undefined,
       referralCode: body.referralCode ?? null,
       giftSelected: body.giftSelected ?? null,
+      pitruPujaDetails: body.pitruPujaDetails ?? null,
       vv_utm: body.vv_utm ?? undefined,
       /* optional marketing/meta */
       fbp: body.fbp,
@@ -625,6 +642,22 @@ export const initiateChadhavaPayment = async (req: Request, res: Response) => {
     const chadhavaDoc = await NewChadhavaData.findById(payload.chadhavaDetails?.chadhavaId).lean();
     if (!chadhavaDoc) {
       return res.status(400).json({ message: "Invalid chadhavaId" });
+    }
+
+    /**
+     * Pitru Puja chadhavas need to know WHO the ritual is being performed for,
+     * so the temple can actually carry it out — reject the booking up front
+     * rather than silently persisting an incomplete puja.
+     */
+    if (chadhavaDoc.isPitruPuja) {
+      const ancestorNames = (payload.pitruPujaDetails?.ancestorNames || []).filter(
+        (n: unknown) => typeof n === "string" && n.trim(),
+      );
+      if (ancestorNames.length === 0) {
+        return res.status(400).json({
+          message: "At least one ancestor's name is required for Pitru Puja bookings.",
+        });
+      }
     }
 
     const bookingDetails = await buildBookingDetails({
@@ -942,6 +975,9 @@ export const exportChadhavaBookings = async (req: Request, res: Response) => {
         Prasad: !!data?.prasad || !!data?.needPrasad ? "Yes" : "No",
         Accessories: accStr,
         Gifts: giftStr,
+        "Pitru Puja": data?.isPitruPuja ? "Yes" : "No",
+        "Ancestor Names": data?.pitruPujaDetails?.ancestorNames?.join(", ") || "-",
+        "Extra Ancestor Fee": data?.pitruPujaDetails?.extraAncestorFee || 0,
       };
     });
 

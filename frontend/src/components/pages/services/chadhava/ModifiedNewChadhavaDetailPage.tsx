@@ -89,6 +89,7 @@ type SingleItem = {
     price: number;
     desc: string;
     image: string;
+    tags?: string[];
 };
 
 type Combo = {
@@ -100,6 +101,14 @@ type Combo = {
     image: string;
     badgeText?: string;
     desc?: string;
+    tags?: string[];
+};
+
+// Admin sets tags per section today (chadhavaSections[].tags), not per item —
+// an item's own tags win if ever populated, otherwise it inherits its section's.
+const resolveTags = (item: any, section: any): string[] => {
+    if (Array.isArray(item?.tags) && item.tags.length > 0) return item.tags;
+    return Array.isArray(section?.tags) ? section.tags : [];
 };
 
 const parseQuillDescription = (raw: string | undefined): string => {
@@ -534,7 +543,8 @@ const NewChadhavaDetailContent = () => {
                         name: it.itemName,
                         price: it.itemPrice,
                         desc: it.itemDesc,
-                        image: it.itemImage?.location || ""
+                        image: it.itemImage?.location || "",
+                        tags: resolveTags(it, sec)
                     });
                 }
             });
@@ -567,6 +577,7 @@ const NewChadhavaDetailContent = () => {
                         items: [], // Structure difference
                         desc: it.itemDesc,
                         badgeText: badgeText,
+                        tags: resolveTags(it, sec),
                     });
                 }
             });
@@ -750,6 +761,12 @@ const NewChadhavaDetailContent = () => {
 
         if (!hasCombos && !hasSingles) {
             setShowEmptyCartModal(true);
+            return;
+        }
+
+        // Skip straight to payment when this chadhava doesn't offer prasad.
+        if (!apiData?.isPrasadIncluded) {
+            navigateToPayment(false);
             return;
         }
 
@@ -1302,6 +1319,15 @@ const NewChadhavaDetailContent = () => {
                         return (
                             <Fragment key={secIdx}>
                                 <section ref={secIdx === 0 ? scrollTargetRef : undefined} className="mx-3 mt-4 overflow-hidden rounded-[18px] bg-[#FFFDF8] ring-1 ring-[#C9A24B]/20 shadow-[0_14px_34px_-16px_rgba(96,42,14,0.32)]">
+                                    {Array.isArray(section.tags) && section.tags.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 px-5 pt-3">
+                                            {section.tags.map((tag: string, ti: number) => (
+                                                <span key={`${tag}-${ti}`} className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-[#8C1519] text-white shadow-[0_4px_10px_-4px_rgba(140,21,25,0.6)]">
+                                                    {tag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                     {/* header */}
                                     <div className="relative flex items-center gap-3 bg-gradient-to-b from-[#FFFDF8] to-[#FFF7EA] px-5 py-2">
                                         <h2 className="m-0 text-[20px] leading-none font-bold tracking-[0.4px] text-[#8C1519]" style={{ fontFamily: "Marcellus, serif" }}>{section.sectionName}</h2>
@@ -1336,7 +1362,7 @@ const NewChadhavaDetailContent = () => {
                                                 <div
                                                     key={id}
                                                     className="cursor-pointer overflow-hidden rounded-[18px] bg-white ring-1 ring-[#F0E5D3] shadow-[0_14px_34px_-16px_rgba(96,42,14,0.32)]"
-                                                    onClick={() => setSelectedItemForModal({ ...c, type: 'combo', id, price, mrp })}
+                                                    onClick={() => setSelectedItemForModal({ ...c, type: 'combo', id, price, mrp, tags: resolveTags(c, section) })}
                                                 >
                                                     {/* media: combo image */}
                                                     <div className="relative p-2.5">
@@ -1420,12 +1446,12 @@ const NewChadhavaDetailContent = () => {
                                                         <div
                                                             key={id}
                                                             className={`flex cursor-pointer items-start gap-3 py-4 ${itIdx === 0 ? "" : "border-t border-[#F0E5D3]"}`}
-                                                            onClick={() => setSelectedItemForModal({ ...it, type: 'single', id })}
+                                                            onClick={() => setSelectedItemForModal({ ...it, type: 'single', id, tags: resolveTags(it, section) })}
                                                         >
                                                             {/* text column */}
                                                             <div className="min-w-0 flex-1 pt-0.5">
                                                                 <h3 className="mb-1 text-[16px] font-semibold leading-tight text-[#2A2018]">{it.itemName}</h3>
-                                                                <p className="mb-3 line-clamp-2 text-[12px] leading-[1.35] text-[#9C8B76]">{it.itemDesc}</p>
+                                                                <p className="mb-2 line-clamp-2 text-[12px] leading-[1.35] text-[#9C8B76]">{it.itemDesc}</p>
                                                                 <div className="flex items-baseline font-extrabold tracking-[-0.3px] text-[#B21E24] tabular-nums notranslate">
                                                                     <span className="text-[1.12rem]">{money(price)}</span>
                                                                 </div>
@@ -1748,6 +1774,16 @@ const NewChadhavaDetailContent = () => {
                                 <p className="text-xs text-[#B21E24] mb-2 font-medium">
                                     Combo Pack
                                 </p>
+                            )}
+
+                            {Array.isArray(selectedItemForModal.tags) && selectedItemForModal.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                    {selectedItemForModal.tags.map((tag: string, ti: number) => (
+                                        <span key={`${tag}-${ti}`} className="text-[10px] font-medium px-2 py-0.5 rounded bg-orange-50 text-orange-600 border border-orange-100">
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
                             )}
 
                             <div className="text-sm text-slate-600 leading-relaxed space-y-2 mb-4">

@@ -41,11 +41,14 @@ interface IChadhavaSectionItem {
   itemImage?: IFileMeta | null;
   type: "item" | "combo";
   discountedPrice?: number;
+  tags?: string[];
 }
 
 interface IChadhavaSection {
   sectionName: string;
   items: IChadhavaSectionItem[];
+  /** Falls back onto every item in this section that has no tags of its own. */
+  tags?: string[];
 }
 
 interface IExclusiveSection {
@@ -90,6 +93,13 @@ export interface INewChadhavaData extends Document {
   isActive: boolean;
   isFeatured: boolean;
   isExclusive: boolean;
+  /** When true, booking this chadhava requires the devotee's ancestors' names
+   *  (collected at checkout, see newChadhavaBooking.model.ts). */
+  isPitruPuja: boolean;
+  /** Charged for every ancestor beyond the first, which is covered by the base price. */
+  pitruPujaPrice: number;
+  /** When false, the prasad-selection step is skipped entirely at checkout. */
+  isPrasadIncluded: boolean;
 
   // backward-compat fields
   chadhavaItems: unknown[];
@@ -149,6 +159,7 @@ const chadhavaSectionItemSchema = new Schema<IChadhavaSectionItem>(
     itemImage: { type: fileSchema, default: null },
     type: { type: String, enum: ["item", "combo"], default: "item" },
     discountedPrice: { type: Number },
+    tags: { type: [String], default: [] },
   },
   { _id: false },
 );
@@ -157,6 +168,7 @@ const chadhavaSectionSchema = new Schema<IChadhavaSection>(
   {
     sectionName: { type: String, default: "" },
     items: { type: [chadhavaSectionItemSchema], default: [] },
+    tags: { type: [String], default: [] },
   },
   { _id: false },
 );
@@ -214,6 +226,9 @@ const newChadhavaDataSchema = new Schema<INewChadhavaData>(
     isActive: { type: Boolean, default: true },
     isFeatured: { type: Boolean, default: false },
     isExclusive: { type: Boolean, default: false },
+    isPitruPuja: { type: Boolean, default: false },
+    pitruPujaPrice: { type: Number, default: 0 },
+    isPrasadIncluded: { type: Boolean, default: false },
 
     // legacy fields (keep if needed)
     chadhavaItems: { type: Schema.Types.Mixed, default: [] },

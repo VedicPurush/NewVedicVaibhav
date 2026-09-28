@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
-import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import { PUJA_KEYS } from "@/lib/query-keys/puja.keys";
 import { fetchActivePoojaById } from "@/lib/api/puja.api";
@@ -78,14 +77,9 @@ const PujaListCard: React.FC<PujaListCardProps> = ({
             <LocationOnRoundedIcon style={{ fontSize: 12, color: "#EA580C" }} />
             <span className="truncate">{location}</span>
           </div>
-          <div className="flex items-center justify-between gap-1 text-[10px] text-stone-500 mt-1 min-w-0">
-            <span className="flex items-center gap-1 whitespace-nowrap min-w-0">
-              <CalendarMonthRoundedIcon style={{ fontSize: 12, color: "#EA580C" }} />
-              <span className="truncate">{dateLabel}</span>
-            </span>
-            <span className="flex shrink-0 items-center gap-0.5 whitespace-nowrap">
-              <AccessTimeRoundedIcon style={{ fontSize: 12, color: "#EA580C" }} />1 Day
-            </span>
+          <div className="flex items-center gap-1 text-[10px] text-stone-500 mt-1 min-w-0">
+            <CalendarMonthRoundedIcon style={{ fontSize: 12, color: "#EA580C" }} />
+            <span className="truncate">{dateLabel}</span>
           </div>
         </div>
         <div className="flex items-end justify-between gap-1.5 mt-1">

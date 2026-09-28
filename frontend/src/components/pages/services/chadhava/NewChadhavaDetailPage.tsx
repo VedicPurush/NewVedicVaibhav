@@ -93,6 +93,7 @@ type SingleItem = {
     price: number;
     desc: string;
     image: string;
+    tags?: string[];
 };
 
 type Combo = {
@@ -104,6 +105,14 @@ type Combo = {
     image: string;
     badgeText?: string;
     desc?: string;
+    tags?: string[];
+};
+
+// Admin sets tags per section today (chadhavaSections[].tags), not per item —
+// an item's own tags win if ever populated, otherwise it inherits its section's.
+const resolveTags = (item: any, section: any): string[] => {
+    if (Array.isArray(item?.tags) && item.tags.length > 0) return item.tags;
+    return Array.isArray(section?.tags) ? section.tags : [];
 };
 
 const parseQuillDescription = (raw: string | undefined): string => {
@@ -649,7 +658,8 @@ const NewChadhavaDetailContent = () => {
                         name: it.itemName,
                         price: it.itemPrice,
                         desc: it.itemDesc,
-                        image: it.itemImage?.location || ""
+                        image: it.itemImage?.location || "",
+                        tags: resolveTags(it, sec)
                     });
                 }
             });
@@ -682,6 +692,7 @@ const NewChadhavaDetailContent = () => {
                         items: [], // Structure difference
                         desc: it.itemDesc,
                         badgeText: badgeText,
+                        tags: resolveTags(it, sec),
                     });
                 }
             });
@@ -835,6 +846,12 @@ const NewChadhavaDetailContent = () => {
 
         if (!hasCombos && !hasSingles) {
             setShowEmptyCartModal(true);
+            return;
+        }
+
+        // Skip straight to payment when this chadhava doesn't offer prasad.
+        if (!apiData?.isPrasadIncluded) {
+            navigateToPayment(false);
             return;
         }
 
@@ -1379,7 +1396,16 @@ const NewChadhavaDetailContent = () => {
 
                         return (
                             <Fragment key={secIdx}>
-                                <section ref={secIdx === 0 ? scrollTargetRef : undefined} className=" mt-3 overflow-hidden rounded-2xl bg-[#CA3500] shadow-[0_10px_20px_rgba(0,0,0,0.06)]">
+                                <section ref={secIdx === 0 ? scrollTargetRef : undefined} className="mt-3 overflow-hidden rounded-2xl bg-[#CA3500] shadow-[0_10px_20px_rgba(0,0,0,0.06)]">
+                                    {Array.isArray(section.tags) && section.tags.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 px-3 pt-2">
+                                            {section.tags.map((tag: string, ti: number) => (
+                                                <span key={`${tag}-${ti}`} className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-white text-[#CA3500] shadow border border-orange-100">
+                                                    {tag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                     {/* header */}
                                     <div className="flex items-center gap-2 px-3 py-2 text-white">
                                         <span className="text-[14px]">🪔</span>
@@ -1405,7 +1431,7 @@ const NewChadhavaDetailContent = () => {
 
                                                     return (
 
-                                                        <div key={id} className="w-[118px] shrink-0" onClick={() => setSelectedItemForModal({ ...it, type: 'single', id })}>
+                                                        <div key={id} className="w-[118px] shrink-0" onClick={() => setSelectedItemForModal({ ...it, type: 'single', id, tags: resolveTags(it, section) })}>
                                                             <div className="relative overflow-hidden rounded-xl bg-gray-100 aspect-square">
                                                                 {/* Was a CSS background of the full-size original for a 118px tile. */}
                                                                 {image ? (
@@ -1474,7 +1500,7 @@ const NewChadhavaDetailContent = () => {
                                                 badgeText = `Save ${discountPercent}%`;
                                             }
                                             return (
-                                                <div key={id} className="mb-3 overflow-hidden rounded-2xl bg-[#FFEDD4]" onClick={() => setSelectedItemForModal({ ...c, type: 'combo', id, price, mrp })}>
+                                                <div key={id} className="mb-3 overflow-hidden rounded-2xl bg-[#FFEDD4]" onClick={() => setSelectedItemForModal({ ...c, type: 'combo', id, price, mrp, tags: resolveTags(c, section) })}>
                                                     <div className="flex items-center gap-2 px-3 py-2">
 
                                                         <div className="rounded-md bg-[#E6AB59]  p-2  text-[11px] font-semibold text-white">
@@ -1762,6 +1788,16 @@ const NewChadhavaDetailContent = () => {
                                 <p className="text-xs text-orange-600 mb-2 font-medium">
                                     Combo Pack
                                 </p>
+                            )}
+
+                            {Array.isArray(selectedItemForModal.tags) && selectedItemForModal.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                    {selectedItemForModal.tags.map((tag: string, ti: number) => (
+                                        <span key={`${tag}-${ti}`} className="text-[10px] font-medium px-2 py-0.5 rounded bg-orange-50 text-orange-600 border border-orange-100">
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
                             )}
 
                             <div className="text-sm text-slate-600 leading-relaxed space-y-2 mb-4">

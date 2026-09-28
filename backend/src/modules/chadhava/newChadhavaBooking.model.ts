@@ -88,9 +88,19 @@ export interface IBookedSectionItem {
   itemImage?: IFileMeta | null;
   type: "item" | "combo";
   discountedPrice?: number;
+  tags?: string[];
   quantity: number;
   sectionIndex?: number;
   itemIndex?: number;
+}
+
+/** Collected only when the booked chadhava has `isPitruPuja: true`. */
+export interface IPitruPujaDetails {
+  ancestorNames: string[];
+  /** NewChadhavaData.pitruPujaPrice at booking time — the per-ancestor rate charged beyond the first. */
+  pricePerExtraAncestor: number;
+  /** pricePerExtraAncestor * max(ancestorNames.length - 1, 0), already folded into totalPrice. */
+  extraAncestorFee: number;
 }
 
 export interface IBookedSection {
@@ -155,6 +165,8 @@ export interface IChadhavaBooking extends Document, IInternationalFields {
     bookedSections?: IBookedSection[];
     bookedExclusiveSections?: IBookedExclusiveSelection[];
     offerApplied?: IBookedOffer[] | null;
+    /** Snapshot of NewChadhavaData.isPitruPuja at booking time. */
+    isPitruPuja?: boolean;
   };
 
   // Legacy fields (optional) for old bookings
@@ -167,6 +179,12 @@ export interface IChadhavaBooking extends Document, IInternationalFields {
   totalPrice: number;
   familyMembers: string[];
   gotra?: string | null;
+  /** Snapshot of NewChadhavaData.isPitruPuja at booking time — same value as
+   *  puja.isPitruPuja, duplicated at the top level so bookings can be
+   *  queried/filtered without reaching into the nested puja object. */
+  isPitruPuja?: boolean;
+  /** Ancestor names, present only for Pitru Puja chadhavas. */
+  pitruPujaDetails?: IPitruPujaDetails | null;
 
   bookingDate: Date;
 
@@ -259,6 +277,7 @@ const bookedSectionItemSchema = new Schema<IBookedSectionItem>(
     itemImage: { type: fileSchema, default: null },
     type: { type: String, enum: ["item", "combo"], required: true },
     discountedPrice: { type: Number },
+    tags: { type: [String], default: [] },
     quantity: { type: Number, required: true, min: 1, default: 1 },
     sectionIndex: { type: Number },
     itemIndex: { type: Number },
@@ -313,6 +332,7 @@ const newChadhavaBookingSchema = new Schema<IChadhavaBooking>(
       rating: { type: Number, default: null },
       bookedSections: { type: [bookedSectionSchema], default: [] },
       offerApplied: { type: [bookedOfferSchema], default: [] },
+      isPitruPuja: { type: Boolean, default: false },
     },
 
     prasad: { type: prasadSchema, default: null },
@@ -322,6 +342,15 @@ const newChadhavaBookingSchema = new Schema<IChadhavaBooking>(
 
     familyMembers: { type: [{ type: String }], default: [] },
     gotra: { type: String, default: null },
+    isPitruPuja: { type: Boolean, default: false },
+    pitruPujaDetails: {
+      type: {
+        ancestorNames: { type: [String], default: [] },
+        pricePerExtraAncestor: { type: Number, default: 0 },
+        extraAncestorFee: { type: Number, default: 0 },
+      },
+      default: null,
+    },
 
     bookingDate: { type: Date, default: Date.now, required: true },
 

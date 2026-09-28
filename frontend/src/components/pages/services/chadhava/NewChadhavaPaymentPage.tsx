@@ -269,6 +269,7 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
   // --- Upsell: read from TanStack Query cache (populated by the detail page) ---
   // This avoids any extra network call; falls back to fetching via the correct route if cold.
   const { data: chadhavaDoc } = useNewChadhavaDetailQuery(basePuja?.chadhavaId ?? "");
+  const isPitruPuja = !!chadhavaDoc?.isPitruPuja;
   const upsellProducts: UpsellProduct[] = (
     chadhavaDoc?.products && Array.isArray(chadhavaDoc.products)
       ? chadhavaDoc.products
@@ -322,6 +323,7 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
   const [family, setFamily] = useState<string[]>(Array(familySize).fill(""));
   const [gotra, setGotra] = useState("");
   const [dontKnowGotra, setDontKnowGotra] = useState(false);
+  const [ancestorNames, setAncestorNames] = useState<string[]>([""]);
   const [address, setAddress] = useState({
     address1: "",
     postal: "",
@@ -511,11 +513,20 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
     return sum + (it ? it.price * Number(qty) : 0);
   }, 0);
 
+  // First ancestor is covered by the base price; every ancestor after that
+  // adds the chadhava's own pitruPujaPrice.
+  const pitruPujaPrice = Number(chadhavaDoc?.pitruPujaPrice) || 0;
+  const trimmedAncestorNames = ancestorNames.map((n) => n.trim()).filter(Boolean);
+  const pitruPujaExtraFee = isPitruPuja
+    ? Math.max(trimmedAncestorNames.length - 1, 0) * pitruPujaPrice
+    : 0;
+
   const finalTotalPrice =
     combosTotal +
     accessoriesPrice +
     (needPrasad && prasad ? prasad.price : 0) +
-    family.length * 50 +
+    (isPitruPuja ? 0 : family.length * 50) +
+    pitruPujaExtraFee +
     upsellTotal;
 
   // Discounted total after coupon (for checkout)
@@ -590,6 +601,12 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
   const updateFamilyMember = (idx: number, value: string) =>
     setFamily((f) => f.map((v, i) => (i === idx ? value : v)));
 
+  const addAncestorName = () => setAncestorNames((a) => [...a, ""]);
+  const removeAncestorName = (idx: number) =>
+    setAncestorNames((a) => a.filter((_, i) => i !== idx));
+  const updateAncestorName = (idx: number, value: string) =>
+    setAncestorNames((a) => a.map((v, i) => (i === idx ? value : v)));
+
 
   const updateAccessory = (id: string, delta: number) => {
     setLocalSelected((prev) => {
@@ -661,8 +678,9 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
           state: data.user.state || "",
         }));
 
-        // Update Family Members
-        if (data.user.familyMembers && Array.isArray(data.user.familyMembers) && data.user.familyMembers.length > 0) {
+        // Update Family Members — Pitru Puja chadhavas hide this section entirely,
+        // so there's nothing to prefill it for.
+        if (!isPitruPuja && data.user.familyMembers && Array.isArray(data.user.familyMembers) && data.user.familyMembers.length > 0) {
           const storedFamily = data.user.familyMembers;
           // Reset family to the new user's data plus empty slots if needed
           // for the current booking requirement.
@@ -738,12 +756,15 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
     if (newErrors.name && !firstErrorField) firstErrorField = "name";
 
     // 3. Family Members — if a slot exists, it must be filled or removed.
-    family.forEach((m, i) => {
-      if (!m.trim()) {
-        newErrors[`family_${i}`] = "Name required";
-        if (!firstErrorField) firstErrorField = `family_${i}`;
-      }
-    });
+    // Pitru Puja chadhavas collect ancestors instead, so this section is hidden.
+    if (!isPitruPuja) {
+      family.forEach((m, i) => {
+        if (!m.trim()) {
+          newErrors[`family_${i}`] = "Name required";
+          if (!firstErrorField) firstErrorField = `family_${i}`;
+        }
+      });
+    }
 
     // 4. Address (only when prasad or gift is claimed)
     if (needAddress) {
@@ -768,10 +789,25 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
       if (!firstErrorField) firstErrorField = "gotra";
     }
 
+    // 6. Pitru Puja — ancestor names
+    if (isPitruPuja) {
+      ancestorNames.forEach((n, i) => {
+        if (!n.trim()) {
+          newErrors[`ancestor_${i}`] = "Name required";
+          if (!firstErrorField) firstErrorField = `ancestor_${i}`;
+        }
+      });
+      if (trimmedAncestorNames.length === 0) {
+        newErrors.ancestorNames = "Please add at least one ancestor's name.";
+        if (!firstErrorField) firstErrorField = "ancestorNames";
+      }
+    }
+
     setErrors(newErrors);
     setTouched({
       whatsapp: true, name: true, address1: true, postal: true, city: true, state: true, gotra: true,
-      ...family.reduce((acc, _, i) => ({ ...acc, [`family_${i}`]: true }), {})
+      ...family.reduce((acc, _, i) => ({ ...acc, [`family_${i}`]: true }), {}),
+      ...(isPitruPuja ? ancestorNames.reduce((acc, _, i) => ({ ...acc, [`ancestor_${i}`]: true }), {}) : {}),
     });
 
     if (Object.keys(newErrors).length > 0) {
@@ -821,12 +857,17 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
       name,
       whatsapp,
       email: safeEmail,
-      family,
+      // Pitru Puja chadhavas hide the Family Members section — never send
+      // whatever the field happens to hold (e.g. a profile prefill) for these.
+      family: isPitruPuja ? [] : family,
       gotra: dontKnowGotra
         ? "Kashyap"
         : gotra?.trim()
           ? gotra.trim()
           : "Kashyap",
+      pitruPujaDetails: isPitruPuja
+        ? { ancestorNames: trimmedAncestorNames.map((n) => `Late ${n}`) }
+        : null,
       chadhavaDetails: {
         chadhavaId: basePuja?.chadhavaId || "undefined",
         title: basePuja?.title,
@@ -871,7 +912,12 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
         name,
         // Extended Profile Data
         gotra: bookingData.gotra,
-        familyMembers: family,
+        // Pitru Puja chadhavas hide the Family Members step, so `family` is
+        // forced empty for this booking — but this call also updates the
+        // devotee's saved profile, and the backend overwrites familyMembers
+        // whenever the field is an array at all (including []). Omitting it
+        // here (rather than sending []) leaves their saved profile untouched.
+        ...(isPitruPuja ? {} : { familyMembers: family }),
         // Address Mapping
         address: fullAddress, // Legacy string
         address1: address.address1,
@@ -1282,13 +1328,22 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
                     <span className="font-semibold text-slate-900 notranslate">{money(prasad.price)}</span>
                   </li>
                 )}
-                {family.length > 0 && (
+                {!isPitruPuja && family.length > 0 && (
                   <li className="flex justify-between items-center text-slate-700">
                     <span className="flex items-center gap-2">
                       <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-[10px] font-bold">{family.length}</span>
                       <span className="font-medium">Additional Members</span>
                     </span>
                     <span className="font-semibold text-slate-900">{money(family.length * 50)}</span>
+                  </li>
+                )}
+                {pitruPujaExtraFee > 0 && (
+                  <li className="flex justify-between items-center text-slate-700">
+                    <span className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-[10px] font-bold">{trimmedAncestorNames.length - 1}</span>
+                      <span className="font-medium">Additional Ancestors</span>
+                    </span>
+                    <span className="font-semibold text-slate-900">{money(pitruPujaExtraFee)}</span>
                   </li>
                 )}
                 {/* Upsell products in summary */}
@@ -1363,64 +1418,6 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
             />
           </div>
 
-          {/* Family Members Section */}
-          <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-300 p-3 shadow-sm mb-2">
-            <div className="mb-2">
-              <label className="text-sm font-bold text-black block mb-1">
-                Add Family Members <span className="text-slate-400 font-normal">(@ {money(50)} each)</span>
-              </label>
-              <p className="text-[10px] text-orange-800 font-medium leading-relaxed mb-2 opacity-80">
-                Add family members to include them in the Sankalp. A small contribution is added per person.
-              </p>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full text-xs font-bold bg-orange-100/50 text-orange-700 px-3 py-2 rounded-xl border border-orange-100 shadow-sm hover:bg-orange-100 transition-all flex items-center justify-center gap-1"
-                onClick={addFamilyMember}
-              >
-                <span>+</span> Add Member
-              </motion.button>
-            </div>
-
-            <AnimatePresence initial={false}>
-              {family.map((member, idx) => (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mb-2 relative overflow-hidden"
-                  id={`family_${idx}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <input
-                        value={member}
-                        onChange={(e) => updateFamilyMember(idx, e.target.value)}
-                        className={`w-full py-2 pl-3 pr-3 bg-white rounded-xl border transition-all outline-none text-sm font-medium ${errors[`family_${idx}`] && touched[`family_${idx}`]
-                          ? "border-red-200 focus:border-red-400 focus:ring-2 focus:ring-red-50"
-                          : "border-slate-100 focus:border-orange-300 focus:ring-2 focus:ring-orange-50"
-                          }`}
-                        placeholder={`Member ${idx + 1} Name...`}
-                      />
-                    </div>
-                    <motion.button
-                      whileHover={{ scale: 1.1, rotate: 90 }}
-                      whileTap={{ scale: 0.9 }}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-500 transition-colors shadow-sm border border-red-100"
-                      onClick={() => removeFamilyMember(idx)}
-                    >
-                      ×
-                    </motion.button>
-                  </div>
-                  <div className="px-1">
-                    <InlineError message={touched[`family_${idx}`] ? errors[`family_${idx}`] : ""} />
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
-
           {/* Gotra Section */}
           <motion.div variants={itemVariants} className="mb-4" id="gotra">
             <label className="block text-xs font-bold text-black uppercase tracking-wider mb-1.5 ml-1">
@@ -1463,6 +1460,134 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
             </div>
             <InlineError message={!dontKnowGotra && touched.gotra ? errors.gotra : ""} />
           </motion.div>
+
+          {/* Pitru Puja Section — ancestor names + preferred puja time */}
+          {isPitruPuja && (
+            <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-300 p-3 shadow-sm mb-2" id="pitruPujaDetails">
+              <div className="mb-2">
+                <label className="text-sm font-bold text-black block mb-1">
+                  Ancestors&apos; Names <span className="text-red-500">*</span>{" "}
+                  {pitruPujaPrice > 0 && (
+                    <span className="text-slate-400 font-normal">(@ {money(pitruPujaPrice)} each, first free)</span>
+                  )}
+                </label>
+                <p className="text-[10px] text-orange-800 font-medium leading-relaxed mb-2 opacity-80">
+                  This is a Pitru Puja — please add the name(s) of the ancestor(s) this ritual is being performed for.
+                </p>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full text-xs font-bold bg-orange-100/50 text-orange-700 px-3 py-2 rounded-xl border border-orange-100 shadow-sm hover:bg-orange-100 transition-all flex items-center justify-center gap-1"
+                  onClick={addAncestorName}
+                >
+                  <span>+</span> Add Ancestor
+                </motion.button>
+              </div>
+
+              <AnimatePresence initial={false}>
+                {ancestorNames.map((memberName, idx) => (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mb-2 relative overflow-hidden"
+                    id={`ancestor_${idx}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`relative flex-1 flex items-stretch overflow-hidden rounded-xl border transition-all bg-white ${errors[`ancestor_${idx}`] && touched[`ancestor_${idx}`]
+                        ? "border-red-200 focus-within:border-red-400 focus-within:ring-2 focus-within:ring-red-50"
+                        : "border-slate-100 focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-50"
+                        }`}>
+                        <span className="flex items-center px-3 bg-orange-50 text-[11px] font-semibold text-orange-700 border-r border-slate-100 shrink-0">
+                          Late
+                        </span>
+                        <input
+                          value={memberName}
+                          onChange={(e) => updateAncestorName(idx, e.target.value)}
+                          className="flex-1 min-w-0 py-2 px-3 outline-none text-sm font-medium bg-transparent"
+                          placeholder={`Ancestor ${idx + 1} Name...`}
+                        />
+                      </div>
+                      {ancestorNames.length > 1 && (
+                        <motion.button
+                          whileHover={{ scale: 1.1, rotate: 90 }}
+                          whileTap={{ scale: 0.9 }}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-500 transition-colors shadow-sm border border-red-100"
+                          onClick={() => removeAncestorName(idx)}
+                        >
+                          ×
+                        </motion.button>
+                      )}
+                    </div>
+                    <div className="px-1">
+                      <InlineError message={touched[`ancestor_${idx}`] ? errors[`ancestor_${idx}`] : ""} />
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          )}
+
+          {/* Family Members Section — Pitru Puja chadhavas collect ancestors instead */}
+          {!isPitruPuja && (
+            <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-300 p-3 shadow-sm mb-2">
+              <div className="mb-2">
+                <label className="text-sm font-bold text-black block mb-1">
+                  Add Family Members <span className="text-slate-400 font-normal">(@ {money(50)} each)</span>
+                </label>
+                <p className="text-[10px] text-orange-800 font-medium leading-relaxed mb-2 opacity-80">
+                  Add family members to include them in the Sankalp. A small contribution is added per person.
+                </p>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full text-xs font-bold bg-orange-100/50 text-orange-700 px-3 py-2 rounded-xl border border-orange-100 shadow-sm hover:bg-orange-100 transition-all flex items-center justify-center gap-1"
+                  onClick={addFamilyMember}
+                >
+                  <span>+</span> Add Member
+                </motion.button>
+              </div>
+
+              <AnimatePresence initial={false}>
+                {family.map((member, idx) => (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mb-2 relative overflow-hidden"
+                    id={`family_${idx}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          value={member}
+                          onChange={(e) => updateFamilyMember(idx, e.target.value)}
+                          className={`w-full py-2 pl-3 pr-3 bg-white rounded-xl border transition-all outline-none text-sm font-medium ${errors[`family_${idx}`] && touched[`family_${idx}`]
+                            ? "border-red-200 focus:border-red-400 focus:ring-2 focus:ring-red-50"
+                            : "border-slate-100 focus:border-orange-300 focus:ring-2 focus:ring-orange-50"
+                            }`}
+                          placeholder={`Member ${idx + 1} Name...`}
+                        />
+                      </div>
+                      <motion.button
+                        whileHover={{ scale: 1.1, rotate: 90 }}
+                        whileTap={{ scale: 0.9 }}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-500 transition-colors shadow-sm border border-red-100"
+                        onClick={() => removeFamilyMember(idx)}
+                      >
+                        ×
+                      </motion.button>
+                    </div>
+                    <div className="px-1">
+                      <InlineError message={touched[`family_${idx}`] ? errors[`family_${idx}`] : ""} />
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          )}
 
           {/* Address Section — only when prasad or gift is claimed */}
           {needAddress && (
