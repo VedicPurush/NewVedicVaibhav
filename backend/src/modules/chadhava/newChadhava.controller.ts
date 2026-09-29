@@ -16,6 +16,8 @@ import {
   orderResponseFields,
 } from "../../utils/internationalOrder";
 import { env } from "../../config/env";
+import { ApiError } from "../../lib/apiError";
+import { resolvePromo } from "../promo/promo.service";
 import { logger } from "../../lib/logger";
 import { sendChadhavaConfirmationToUser, type ChadhavaUserEmailBooking } from "../../utils/mail/smtp";
 import { sendChadhavaConfirmationToAdmin, type ChadhavaAdminEmailBooking } from "../../utils/mail/smtpUs";
@@ -183,6 +185,11 @@ const buildBookingDetails = async ({
     // Already the marked-up INR value of the sale (see initiateChadhavaPayment).
     totalPrice: payload.totalPrice,
     listAmount: payload.listAmount ?? payload.totalPrice,
+    // What the coupon actually granted, as the server resolved it — never as the
+    // browser reported it. Absent on a booking that used no coupon.
+    promoCode: payload.promoCode || undefined,
+    discountAmount: payload.discountAmount ?? 0,
+    originalAmount: payload.originalAmount ?? payload.listAmount ?? payload.totalPrice,
     referralCode: payload.referralCode ?? null,
 
     puja: {
@@ -559,6 +566,13 @@ export const initiateChadhavaPayment = async (req: Request, res: Response) => {
       comboSelections: body.comboSelections ?? [],
       prasadDetails: body.prasadDetails ?? body.prasad ?? null,
       totalPrice: Number(body.totalPrice ?? body.amount ?? 0),
+      /**
+       * The cart value BEFORE any coupon, and the code to apply to it. A client
+       * that sends neither — the app, or any build older than this — falls back
+       * to `totalPrice` and is priced exactly as it was before.
+       */
+      subtotal: Number(body.subtotal ?? body.totalPrice ?? body.amount ?? 0),
+      promoCode: typeof body.promoCode === "string" ? body.promoCode.trim() : "",
       address: body.address ?? undefined,
       referralCode: body.referralCode ?? null,
       giftSelected: body.giftSelected ?? null,
@@ -635,7 +649,20 @@ export const initiateChadhavaPayment = async (req: Request, res: Response) => {
      * the server owns the multiplier in every flow in this codebase.
      */
     const orderCurrency = resolveCurrency(payload.currency);
-    const listInr = Number(payload.totalPrice);
+
+    /**
+     * A coupon is re-resolved HERE and the payable total derived from the answer,
+     * because `totalPrice` arrives already discounted by the browser and nothing
+     * in this request proves the devotee was entitled to that discount. The same
+     * service the checkout previewed against decides again — including
+     * `firstOrderOnly`, which is judged against this booking's own number — so a
+     * code that was refused on screen cannot be charged by editing the request.
+     * It throws ApiError(400) with the reason, handled at the bottom.
+     */
+    const promo = payload.promoCode
+      ? await resolvePromo(payload.promoCode, payload.subtotal, { phone: whatsapp })
+      : null;
+    const listInr = promo ? promo.finalAmount : Number(payload.totalPrice);
     const amountInr = markUpInr(listInr, orderCurrency);
 
     /* ----------- validate master doc exists ----------- */
@@ -663,7 +690,14 @@ export const initiateChadhavaPayment = async (req: Request, res: Response) => {
     const bookingDetails = await buildBookingDetails({
       // totalPrice becomes the INR VALUE OF THE SALE so every downstream reader
       // (reporting, Meta CAPI, emails, admin CSVs) keeps working in rupees.
-      payload: { ...payload, totalPrice: amountInr, listAmount: listInr },
+      payload: {
+        ...payload,
+        totalPrice: amountInr,
+        listAmount: listInr,
+        promoCode: promo?.promoName,
+        discountAmount: promo?.discountAmount ?? 0,
+        originalAmount: promo ? payload.subtotal : listInr,
+      },
       userID,
       req,
     });
@@ -717,6 +751,17 @@ export const initiateChadhavaPayment = async (req: Request, res: Response) => {
       key: razorpayKeyId,
     });
   } catch (err: any) {
+    // A refused coupon is the devotee's problem to fix, not a server fault —
+    // pass the reason through instead of burying it in "Payment initiation
+    // failed", which is what the checkout would otherwise show.
+    if (err instanceof ApiError) {
+      logger.warn({ err: err.message }, "initiateChadhavaPayment rejected");
+      return res.status(err.statusCode).json({
+        success: false,
+        message: err.message,
+        ...(err.details !== undefined ? { details: err.details } : {}),
+      });
+    }
     logger.error({ err }, "initiateChadhavaPayment error");
     return res.status(500).json({
       success: false,

@@ -1,12 +1,23 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import PlaceIcon from '@mui/icons-material/Place';
+import TempleHinduIcon from '@mui/icons-material/TempleHindu';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import CloseIcon from '@mui/icons-material/Close';
+import AddIcon from '@mui/icons-material/Add';
 import { notification } from 'antd';
 import { getVvUtm } from "@/lib/utm";
 import VerticalPaymentLoader from "./PaymentLoader";
@@ -14,7 +25,10 @@ import { gtag } from "@/lib/gtag";
 import { api } from "@/lib/api";
 import { orderRequestFields, useMoney, shipsPrasad, toInr, sanitizePhone, isValidPhone } from "@/lib/currency";
 import { verifyPaymentWithRetry } from "@/lib/verify-payment";
+import { displayPlace } from "@/lib/place";
 import { useNewChadhavaDetailQuery } from "@/hooks/queries/useNewChadhavaDetailQuery";
+import { useVedicPromosQuery } from "@/hooks/queries/usePromoQueries";
+import { validatePromo, type AppliedPromo, type PromoCode } from "@/lib/api/promo.api";
 
 // --- Meta Pixel safe tracker (queues until fbq is ready) ---
 const isFbq = (fn: unknown): fn is (...args: any[]) => void =>
@@ -35,23 +49,15 @@ const getFbc = (): string => {
   return '';
 };
 
-// --- Modern Inline Error Component ---
-const InlineError = ({ message }: { message?: string }) => (
-  <AnimatePresence mode="wait">
-    {message && (
-      <motion.div
-        initial={{ opacity: 0, y: -5, height: 0 }}
-        animate={{ opacity: 1, y: 0, height: "auto" }}
-        exit={{ opacity: 0, y: -5, height: 0 }}
-        transition={{ duration: 0.2 }}
-        className="flex items-center gap-1.5 mt-1 overflow-hidden"
-      >
-        <span className="text-[10px] text-red-500 bg-red-100 rounded-full w-4 h-4 flex items-center justify-center font-bold shrink-0">!</span>
-        <span className="text-[11px] font-medium text-red-500 font-serif tracking-wide">{message}</span>
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
+/** Inline field error — sits directly under its field, so the problem is read
+ *  where it is fixed. */
+const InlineError = ({ message }: { message?: string }) =>
+  message ? (
+    <p role="alert" className="flex items-start gap-1 text-[12px] text-[#C0392B] mt-1.5">
+      <ErrorOutlineIcon style={{ fontSize: 14 }} className="shrink-0 mt-[1px]" />
+      <span>{message}</span>
+    </p>
+  ) : null;
 
 
 const fbqTrack = (event: string, params?: Record<string, any>, options?: { eventID?: string }) => {
@@ -94,29 +100,31 @@ const fbqTrack = (event: string, params?: Record<string, any>, options?: { event
   }
 };
 
-interface Coupon {
-  code: string;
-  visible: boolean;
-  expires: string;
-  minCartValue: number;
-  discount: number;
-}
+/** The server explains exactly why a coupon was refused, and the reason is
+ *  usually actionable ("needs a minimum order of ₹499"), so show it verbatim. */
+const apiErrorMessage = (err: unknown, fallback: string) =>
+  (err as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
 
-const coupons: Coupon[] = [
-  { code: 'Vedic100', visible: true, expires: '2025-12-31', minCartValue: 449, discount: 30 },
-  { code: 'WELCOME10', visible: true, expires: '2025-12-31', minCartValue: 499, discount: 50 },
-  { code: 'Vedic@1000', visible: true, expires: '2025-12-31', minCartValue: 1251, discount: 110 },
-  { code: 'Vedic@2000', visible: true, expires: '2025-12-31', minCartValue: 2101, discount: 251 },
-  { code: 'Tyagi@19', visible: false, expires: '2025-12-31', minCartValue: 0, discount: 999999 },
-  { code: 'THANKYOU6', visible: false, expires: '2025-12-31', minCartValue: 251, discount: 50 },
-];
+/**
+ * Coupons offered in "View all coupons". Influencer codes still work when typed,
+ * they are just not advertised (same rule as the puja checkout); app-only codes
+ * are rejected on the website, so they are not offered either.
+ */
+const isListablePromo = (promo: PromoCode, now: number) =>
+  promo.isActive &&
+  !promo.isAppOnly &&
+  promo.promoType?.toLowerCase() !== "influencer-promo" &&
+  new Date(promo.startDate).getTime() <= now &&
+  new Date(promo.expiryDate).getTime() >= now;
 
-function formatDisplayDate(dateStr: string) {
+function formatShortDate(dateStr: string) {
   if (!dateStr) return "";
   const date = new Date(dateStr + (dateStr.includes('T') ? "" : "T00:00:00"));
-  return date.toLocaleDateString('en-IN', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-  });
+  if (isNaN(date.getTime())) return "";
+  const day = date.toLocaleDateString('en-IN', { day: 'numeric' });
+  const month = date.toLocaleDateString('en-IN', { month: 'short' });
+  const weekday = date.toLocaleDateString('en-IN', { weekday: 'short' });
+  return `${day} ${month}, ${weekday}`;
 }
 
 
@@ -141,6 +149,67 @@ const itemVariants = {
   }
 };
 
+/** Chadhava orange — the accent the detail page is built on, so checkout reads
+ *  as the next step of that page rather than a different site. */
+const ORANGE = "#EA580C";
+
+/** Shared input shell. Every field on this page goes through it: the old mix of
+ *  per-input border widths, ring shadows and focus scales gave each one a
+ *  slightly different size and weight, which is what made the form look
+ *  unsettled even when nothing was wrong with it. */
+const fieldShell = (hasError?: boolean) =>
+  `rounded-xl border bg-white transition-colors ${
+    hasError ? "border-[#C0392B] focus-within:border-[#C0392B]" : "border-stone-300 focus-within:border-[#EA580C]"
+  }`;
+
+const Card: React.FC<{ children: React.ReactNode; id?: string }> = ({ children, id }) => (
+  <motion.div
+    id={id}
+    variants={itemVariants}
+    className="bg-white border border-[#F3D3B5] rounded-xl p-4 shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+  >
+    {children}
+  </motion.div>
+);
+
+const SectionHeading: React.FC<{ icon?: React.ReactNode; title: string; subtitle?: string }> = ({
+  icon,
+  title,
+  subtitle,
+}) => (
+  <div className="mb-1.5">
+    <div className="flex items-start gap-2">
+      <span className="w-[5px] h-5 mt-0.5 rounded-full bg-gradient-to-b from-[#EA580C] to-[#FBD4B4] shrink-0" />
+      <h2 className="font-heading text-[15px] min-[360px]:text-[16px] md:text-[18px] text-[#C2410C] leading-snug flex-1 min-w-0 break-words">
+        {title}
+      </h2>
+      {icon && (
+        <span className="flex items-center justify-center w-7 h-7 min-[360px]:w-8 min-[360px]:h-8 rounded-full bg-[#FFF1E6] shrink-0">
+          {icon}
+        </span>
+      )}
+    </div>
+    {subtitle && <p className="text-[12px] text-stone-500 mt-1 pl-[13px]">{subtitle}</p>}
+  </div>
+);
+
+const RequiredLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <label className="text-[13px] text-stone-700 font-medium block mb-2">
+    <span className="text-[#C0392B] mr-0.5">*</span>
+    {children}
+  </label>
+);
+
+const OptionalLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <label className="text-[13px] text-stone-700 font-medium block mb-2">
+    {children}
+    <span className="text-stone-400 font-normal ml-1">(optional)</span>
+  </label>
+);
+
+/** One field, one shape. `prefix` renders as a tinted segment inside the same
+ *  shell (the +91 badge) rather than as a floating pill that changed the row's
+ *  height; `optional` only swaps the label. */
 const ModernInput = ({
   label,
   value,
@@ -150,42 +219,38 @@ const ModernInput = ({
   type = "text",
   error,
   touched,
-  icon,
+  prefix,
   maxLength,
   pattern,
   inputMode,
-  disabled
+  disabled,
+  optional,
+  hint,
+  id,
 }: any) => {
-  const [isFocused, setIsFocused] = useState(false);
+  const hasError = !!(error && touched);
+  const Label = optional ? OptionalLabel : RequiredLabel;
 
   return (
-    <motion.div
-      variants={itemVariants}
-      className="mb-2 relative"
-    >
-      <label className="block text-xs font-bold text-black uppercase tracking-wider mb-1 ml-1">
-        {label}
-      </label>
-      <motion.div
-        className={`relative flex items-center bg-white rounded-xl overflow-hidden border-2 transition-colors ${error && touched
-          ? "border-red-300 shadow-[0_0_0_4px_rgba(254,202,202,0.3)]"
-          : isFocused
-            ? "border-orange-400 shadow-[0_0_0_4px_rgba(251,146,60,0.15)]"
-            : "border-slate-100 shadow-sm"
-          }`}
-        animate={isFocused ? { scale: 1.01 } : { scale: 1 }}
-      >
-        {icon && (
-          <div className="pl-3 text-slate-400">
-            {icon}
-          </div>
+    <div>
+      {label && <Label>{label}</Label>}
+      <div className={`flex items-stretch overflow-hidden ${fieldShell(hasError)}`}>
+        {prefix && (
+          <span
+            className={`flex items-center gap-1.5 px-2.5 min-[360px]:px-3 bg-[#FFF1E6] text-[13px] font-semibold text-[#C2410C] border-r shrink-0 ${
+              hasError ? "border-[#C0392B]" : "border-stone-300"
+            }`}
+          >
+            {prefix}
+          </span>
         )}
         <input
+          id={id}
           value={value}
           onChange={onChange}
-          onBlur={(e) => { setIsFocused(false); onBlur && onBlur(e); }}
-          onFocus={() => setIsFocused(true)}
-          className="w-full py-3 px-3 text-slate-800 font-medium placeholder:text-slate-400 outline-none bg-transparent"
+          onBlur={onBlur}
+          aria-invalid={hasError}
+          className="flex-1 min-w-0 px-3 py-3 text-[14px] outline-none bg-transparent disabled:text-stone-400"
           placeholder={placeholder}
           type={type}
           maxLength={maxLength}
@@ -193,14 +258,10 @@ const ModernInput = ({
           inputMode={inputMode}
           disabled={disabled}
         />
-        {error && touched && (
-          <div className="pr-3 text-red-500 animate-pulse">
-            !
-          </div>
-        )}
-      </motion.div>
+      </div>
       <InlineError message={touched ? error : ""} />
-    </motion.div>
+      {hint && <p className="text-[12px] text-stone-500 mt-2">{hint}</p>}
+    </div>
   );
 };
 
@@ -434,12 +495,17 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
   }, []);
 
   const [couponCode, setCouponCode] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedPromo | null>(null);
+  /** Which code the server is checking right now, so its button can say so. */
+  const [applyingCode, setApplyingCode] = useState<string | null>(null);
   const [couponError, setCouponError] = useState("");
-  const [couponModalVisible, setCouponModalVisible] = useState(false);
 
-  // First-time payment page popup state
-  const [showFirstTimePayPopup, setShowFirstTimePayPopup] = useState(false);
+  /** The seva summary opens expanded — it is what the devotee just chose. */
+  const [isSummaryOpen, setIsSummaryOpen] = useState(true);
+
+  /** Coupons are listed inline now, so the old full-screen offers modal is gone. */
+  const [showAllCoupons, setShowAllCoupons] = useState(false);
+
   // Frequently bought together modal state
   const [freqModalVisible, setFreqModalVisible] = useState(false);
   const [showCartItems, setShowCartItems] = useState(false);
@@ -518,7 +584,7 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
   const pitruPujaPrice = Number(chadhavaDoc?.pitruPujaPrice) || 0;
   const trimmedAncestorNames = ancestorNames.map((n) => n.trim()).filter(Boolean);
   const pitruPujaExtraFee = isPitruPuja
-    ? Math.max(trimmedAncestorNames.length - 1, 0) * pitruPujaPrice
+    ? Math.max(ancestorNames.length - 1, 0) * pitruPujaPrice
     : 0;
 
   const finalTotalPrice =
@@ -529,71 +595,140 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
     pitruPujaExtraFee +
     upsellTotal;
 
-  // Discounted total after coupon (for checkout)
-  const discountedTotalPrice = appliedCoupon
-    ? appliedCoupon.code.toUpperCase() === "TYAGI@19" || appliedCoupon.discount === 999999
-      ? 1
-      : Math.max(finalTotalPrice - appliedCoupon.discount, 1)
-    : finalTotalPrice;
+  /**
+   * The server priced this discount against `finalTotalPrice`, capping it so the
+   * order never reaches ₹0 (Razorpay cannot create such an order). It re-prices
+   * whenever that total or the devotee's number moves — see the effect below —
+   * so `finalAmount` is never stale.
+   */
+  const discountedTotalPrice = appliedCoupon ? appliedCoupon.finalAmount : finalTotalPrice;
 
   // Show address only when something physical needs to be shipped
   const hasSelectedGift = giftSelected && Object.values(giftSelected).some(Boolean);
   const needAddress = needPrasad || hasSelectedGift;
 
-  const applyCouponByCode = (code: string) => {
-    const found = coupons.find(
-      (c) => c.code.toUpperCase() === code.toUpperCase()
-    );
+  const { data: allPromos = [], isLoading: isPromosLoading } = useVedicPromosQuery();
+  const listedPromos = useMemo(() => {
+    const now = Date.now();
+    return allPromos.filter((p) => isListablePromo(p, now));
+  }, [allPromos]);
 
-    if (found && finalTotalPrice >= found.minCartValue) {
-      setAppliedCoupon(found);
-      setCouponError("");
-      setCouponCode(found.code);
+  const recommendedPromo = useMemo(() => {
+    const eligible = listedPromos.filter((p) => finalTotalPrice >= (p.startRange || 0));
+    if (eligible.length === 0) return null;
+    return eligible.reduce((best, p) => (p.discountAmount > best.discountAmount ? p : best), eligible[0]);
+  }, [listedPromos, finalTotalPrice]);
+
+  /** Eligibility can depend on the devotee's number, so wait for them to finish
+   *  typing it before asking the server about it. */
+  const whatsappDigits = whatsapp.replace(/\D/g, "");
+  const [settledPhone, setSettledPhone] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setSettledPhone(whatsappDigits), 500);
+    return () => clearTimeout(id);
+  }, [whatsappDigits]);
+
+  /** What the applied coupon was last judged against. */
+  const promoPhoneRef = useRef("");
+  const promoOrderValueRef = useRef(0);
+  const appliedCouponRef = useRef(appliedCoupon);
+  useEffect(() => {
+    appliedCouponRef.current = appliedCoupon;
+  });
+
+  /**
+   * Validated on the server, against both the order value and this devotee's own
+   * number — rules such as "first booking only" depend on who is asking, which
+   * the browser cannot answer and used not to ask. Every other rule (active,
+   * expiry, start date, app-only, minimum order) is enforced there too, so the
+   * code no longer carries its own copy of any of them.
+   */
+  const applyCouponByCode = async (rawCode: string) => {
+    const code = rawCode.trim();
+    if (!code) {
+      setCouponError("Please enter a coupon code.");
+      return false;
+    }
+    setCouponError("");
+    setApplyingCode(code.toUpperCase());
+    try {
+      const phone = settledPhone || whatsappDigits;
+      const applied = await validatePromo(code, finalTotalPrice, phone);
+      promoPhoneRef.current = phone;
+      promoOrderValueRef.current = finalTotalPrice;
+      setAppliedCoupon(applied);
+      setCouponCode("");
+      setShowAllCoupons(false);
       notification.success({
         message: "Coupon Applied",
-        description: `Congratulations! You saved ${money(found.discount)}!`,
+        description: `Congratulations! You saved ${money(applied.discountAmount)}!`,
         placement: "topRight",
       });
       return true;
-    }
-
-    setCouponError("Invalid or inapplicable coupon code");
-    notification.error({
-      message: "Coupon not applicable",
-      description: found
-        ? `Add ${money(Math.max(
-          found.minCartValue - finalTotalPrice,
-          0
-        ))} more to use ${found.code}.`
-        : "Invalid coupon code.",
-      placement: "topRight",
-    });
-    return false;
-  };
-
-  const applicableCoupons = coupons.filter(
-    (c) => c.visible && finalTotalPrice >= c.minCartValue
-  );
-  const recommendedCoupon =
-    applicableCoupons.length > 0
-      ? applicableCoupons.reduce(
-        (best, c) => (c.discount > best.discount ? c : best),
-        applicableCoupons[0]
-      )
-      : null;
-
-
-  // Automatically remove coupon if total falls below minimum required
-  useEffect(() => {
-    if (appliedCoupon && finalTotalPrice < appliedCoupon.minCartValue) {
-      notification.warning({
-        message: "Coupon Removed",
-        description: `Coupon ${appliedCoupon.code} has been removed as the total dropped below ${money(appliedCoupon.minCartValue)}.`,
+    } catch (err) {
+      const message = apiErrorMessage(err, "Could not apply this coupon. Please try again.");
+      setCouponError(message);
+      notification.error({
+        message: "Coupon not applicable",
+        description: message,
         placement: "topRight",
       });
-      setAppliedCoupon(null);
+      return false;
+    } finally {
+      setApplyingCode(null);
     }
-  }, [finalTotalPrice, appliedCoupon]);
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponError("");
+    promoPhoneRef.current = "";
+    promoOrderValueRef.current = 0;
+  };
+
+  /**
+   * Re-checks an applied coupon when the order value or the WhatsApp number
+   * changes under it — adding an upsell can push the total past a minimum, and a
+   * code eligible for one devotee may not be for the next. Better to settle it
+   * here, with the reason visible, than to have the booking refused at the moment
+   * the devotee expects Razorpay to open.
+   */
+  useEffect(() => {
+    const promo = appliedCouponRef.current;
+    if (!promo) return;
+    if (settledPhone === promoPhoneRef.current && finalTotalPrice === promoOrderValueRef.current) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const applied = await validatePromo(promo.promoName, finalTotalPrice, settledPhone);
+        if (cancelled) return;
+        promoPhoneRef.current = settledPhone;
+        promoOrderValueRef.current = finalTotalPrice;
+        setAppliedCoupon(applied);
+      } catch (err) {
+        if (cancelled) return;
+        const message = apiErrorMessage(
+          err,
+          `Coupon "${promo.promoName}" can no longer be used on this order.`,
+        );
+        promoPhoneRef.current = "";
+        promoOrderValueRef.current = 0;
+        setAppliedCoupon(null);
+        setCouponError(message);
+        notification.warning({
+          message: "Coupon Removed",
+          description: message,
+          placement: "topRight",
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [settledPhone, finalTotalPrice]);
 
   const addFamilyMember = () => setFamily((f) => [...f, ""]);
   const removeFamilyMember = (idx: number) =>
@@ -623,19 +758,6 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
   const freqItems = accessoriesList.filter(
     (a: any) => !localSelected[a.id]
   );
-
-  useEffect(() => {
-    try {
-      const key = "vv_first_time_payment_popup_shown";
-      const already = localStorage.getItem(key);
-      if (!already) {
-        setShowFirstTimePayPopup(true);
-        localStorage.setItem(key, "1");
-      }
-    } catch {
-      // ignore storage errors
-    }
-  }, []);
 
   const fetchUserDetails = async (phone: string) => {
     // Helper to clear fields
@@ -890,6 +1012,11 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
 
       prasadDetails: needPrasad ? prasad : null,
       totalPrice: discountedTotalPrice,
+      // The server re-resolves the coupon against `subtotal` and prices the order
+      // from its own answer — `totalPrice` above is what we showed, not what is
+      // charged. Sending the code is what lets it check who may use it.
+      subtotal: finalTotalPrice,
+      promoCode: appliedCoupon?.promoName,
       address: address, // Keep structured address for booking
       referralCode: referralCode,
       vv_utm: getVvUtm(),
@@ -1102,9 +1229,15 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
         items: [{ item_id: basePuja?.chadhavaId || "chadhava", item_name: basePuja?.title || "Chadhava" }],
       });
 
+      // The server refuses a coupon it will not honour, and says why. Showing
+      // "check your connection" for that would send the devotee looking in
+      // entirely the wrong place.
       notification.error({
         message: "Payment Initiation Failed",
-        description: "Unable to start payment. Please check your connection and try again.",
+        description: apiErrorMessage(
+          error,
+          "Unable to start payment. Please check your connection and try again.",
+        ),
         placement: "top",
       });
     }
@@ -1113,99 +1246,7 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
   if (!basePuja) return null;
 
   return (
-    <div className="bg-[#FFF8F0] min-h-screen pb-32 font-sans selection:bg-orange-100 selection:text-orange-900 overflow-x-hidden">
-      {/* Background decoration */}
-      <div className="fixed inset-0 pointer-events-none z-0 opacity-40"
-        style={{ backgroundImage: "radial-gradient(circle at 50% 0%, #ffedd5 0%, transparent 60%), radial-gradient(circle at 0% 100%, #ffe4e6 0%, transparent 50%)" }}
-      />
-
-      <AnimatePresence>
-        {showFirstTimePayPopup && (
-          <motion.div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[999999]"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowFirstTimePayPopup(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.96, y: 18 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.96, y: 18 }}
-              transition={{ type: "spring", damping: 22, stiffness: 320 }}
-              className="bg-white w-[92vw] max-w-md rounded-2xl shadow-2xl border border-orange-200 p-5 font-serif relative"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                className="absolute top-3 right-3 text-xl text-slate-500 hover:text-slate-700"
-                onClick={() => setShowFirstTimePayPopup(false)}
-                aria-label="Close"
-              >
-                ×
-              </button>
-
-              <div className="flex items-center gap-2 mb-2">
-                <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-emerald-50 border border-emerald-200">
-                  🎁
-                </span>
-                <div>
-                  <div className="text-sm font-extrabold text-slate-900">
-                    Welcome offer for new users
-                  </div>
-                  <div className="text-xs text-slate-600">
-                    Save instantly on your first payment
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50 p-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-xs text-slate-600">Use code</div>
-                    <div className="text-lg font-extrabold tracking-wider text-[#B91C1C]">
-                      WELCOME10
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-slate-600">Discount</div>
-                    <div className="text-base font-extrabold text-emerald-700">
-                      {money(50)} OFF
-                    </div>
-                  </div>
-                </div>
-                <div className="text-[11px] text-slate-600 mt-1">
-                  Applicable on orders of {money(499)} and above.
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <button
-                  className="w-full py-3 rounded-xl bg-[#B91C1C] hover:bg-red-700 text-white font-bold shadow-lg shadow-red-200 active:scale-[0.98] transition-all"
-                  onClick={() => {
-                    // 1. Copy
-                    try {
-                      navigator.clipboard?.writeText("WELCOME10");
-                    } catch { }
-
-                    // 2. Apply
-                    applyCouponByCode("WELCOME10");
-
-                    // 3. Close (Unconditionally)
-                    setShowFirstTimePayPopup(false);
-                  }}
-                >
-                  Copy & Apply Coupon
-                </button>
-              </div>
-
-              <div className="mt-3 text-[11px] text-slate-500">
-                *Offer is shown once per device/browser.
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
+    <div className="bg-white min-h-screen pb-32 font-sans selection:bg-orange-100 selection:text-orange-900 overflow-x-hidden">
       {verifying && <VerticalPaymentLoader />}
 
       <style>{`
@@ -1218,167 +1259,219 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
           }
         `}</style>
 
+      {/* Title bar. The page has no site header of its own, so this one sticks. */}
+      <div className="sticky top-0 z-30 bg-gradient-to-r from-[#FFE8D6] via-[#FFF6EF] to-white border-b border-[#F3D3B5]">
+        <div className="max-w-2xl mx-auto flex items-center gap-2 min-[360px]:gap-3 px-3 min-[360px]:px-4 py-3.5">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            aria-label="Go back"
+            className="text-[#C2410C] shrink-0"
+          >
+            <ArrowBackIcon style={{ fontSize: 22 }} />
+          </button>
+          <h1 className="font-heading font-bold text-[17px] min-[360px]:text-[19px] md:text-[22px] text-[#C2410C] min-w-0 break-words">
+            Complete your Seva
+          </h1>
+        </div>
+      </div>
+
       <motion.div
-        className="max-w-2xl mx-auto py-4 px-4 relative z-10"
+        className="max-w-2xl mx-auto px-3 md:px-0 pt-4 space-y-4 relative z-10"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
-        <motion.button
-          variants={itemVariants}
-          className="mb-2 flex items-center gap-1 text-slate-500 hover:text-orange-600 transition-colors font-medium text-sm group"
-          onClick={() => router.back()}
-          whileTap={{ scale: 0.95 }}
-        >
-          <span className="text-lg group-hover:-translate-x-1 transition-transform">←</span> Back
-        </motion.button>
-
-        <motion.h1 variants={itemVariants} className="text-2xl font-black mb-4 text-slate-900 tracking-tight">
-          Complete your <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-red-600">Seva</span>
-        </motion.h1>
-
-        {/* Modern Glassmorphic Summary Card */}
+        {/* Seva summary — same look as the chadhava card on the detail page */}
         <motion.div
           variants={itemVariants}
-          className="bg-white rounded-2xl shadow-sm border border-gray-300 p-4 mb-4 relative overflow-hidden"
+          className="rounded-xl border border-[#EA580C] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.08)]"
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent pointer-events-none" />
-
-          <div className="relative z-10">
-            <div className="flex items-center gap-5 mb-2">
-              <motion.div
-                className="w-24 h-16 shrink-0 rounded-2xl shadow-lg border-2 border-white overflow-hidden relative"
-                whileHover={{ scale: 1.05, rotate: 2 }}
-              >
-                <img loading="lazy"
-                  src={basePuja?.image || "https://via.placeholder.com/96?text=Chadhava"}
-                  alt={basePuja?.title || "Chadhava"}
-                  className="w-full h-full object-cover"
-                />
-              </motion.div>
-              <div>
-                <h2 className="text-sm font-bold text-slate-800 leading-tight mb-1">
-                  {basePuja?.title}
-                </h2>
-                <div className="flex items-center gap-2 text-xs text-slate-600 mt-1">
-                  <PlaceIcon fontSize="small" className="text-orange-500" />
-                  <span>{basePuja?.temple}</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-600">
-                  <CalendarMonthIcon fontSize="small" className="text-orange-500" />
-                  <span>{formatDisplayDate(basePuja?.date)}</span>
-                </div>
+          <button
+            type="button"
+            onClick={() => setIsSummaryOpen((v) => !v)}
+            aria-expanded={isSummaryOpen}
+            className="w-full flex items-center gap-2 min-[360px]:gap-3 bg-gradient-to-r from-[#FFE0C7] to-[#FFF8F2] px-2.5 min-[360px]:px-3 py-3 text-left"
+          >
+            <img
+              loading="lazy"
+              src={basePuja?.image || "https://via.placeholder.com/96?text=Chadhava"}
+              alt={basePuja?.title || "Chadhava"}
+              className="w-16 h-12 min-[360px]:w-20 min-[360px]:h-14 rounded-lg object-cover shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="text-[14px] min-[360px]:text-[15px] font-medium text-stone-900 leading-snug line-clamp-2">
+                {basePuja?.title}
+              </div>
+              <div className="text-[18px] min-[360px]:text-[20px] font-medium leading-tight text-[#9A3412] mt-0.5 whitespace-nowrap notranslate">
+                {money(discountedTotalPrice)}
               </div>
             </div>
+            <KeyboardArrowDownIcon
+              className="self-start shrink-0"
+              style={{
+                fontSize: 22,
+                color: ORANGE,
+                transform: isSummaryOpen ? "rotate(180deg)" : "none",
+                transition: "transform 0.2s",
+              }}
+            />
+          </button>
 
-            <div className="mb-4 pt-4 border-t border-slate-100">
-              <h3 className="text-xs font-bold text-black uppercase tracking-wider mb-3">
-                Your Selections
-              </h3>
-              <ul className="space-y-2 text-sm">
-                {/* Combos first */}
-                {Object.entries(selectedCombos).map(([id, qty]) => {
-                  const combo = comboPlans.find((c: any) => c.id === id);
-                  if (!combo) return null;
-                  return (
-                    <li key={combo.id} className="flex justify-between items-center text-slate-700">
-                      <span className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-[10px] font-bold notranslate">{String(qty)}</span>
-                        <span className="font-medium">{combo.title}</span>
-                      </span>
-                      <span className="font-semibold text-slate-900 notranslate">{money(combo.price * Number(qty))}</span>
-                    </li>
-                  );
-                })}
-                {/* Then individual accessories */}
-                {Object.entries(localSelected).map(([id, qty]) => {
-                  const acc = accessoriesList.find(
-                    (a: { id: string; name: string; price: number }) => a.id === id
-                  );
-                  return acc ? (
-                    <li key={id} className="flex justify-between items-center text-slate-700">
-                      <span className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-[10px] font-bold notranslate">{String(qty)}</span>
-                        <span className="font-medium">{acc.name}</span>
-                      </span>
-                      <span className="font-semibold text-slate-900 notranslate">{money(acc.price * Number(qty))}</span>
-                    </li>
-                  ) : null;
-                })}
-                {/* Free Gifts */}
-                {giftSelected && giftList && Object.entries(giftSelected).map(([id, isSelected]) => {
-                  if (!isSelected) return null;
-                  const gift = giftList.find((g: any) => g.id === id);
-                  if (!gift) return null;
-                  return (
-                    <li key={id} className="flex justify-between items-center text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100/50">
-                      <span className="flex items-center gap-2 font-medium">
-                        🎁 {gift.title.replace(/^FREE\s*/i, "")}
-                      </span>
-                      <span className="text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">Free</span>
-                    </li>
-                  );
-                })}
-                {needPrasad && prasad && (
-                  <li className="flex justify-between items-center text-slate-700">
-                    <span className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-[10px] font-bold">1</span>
-                      <span className="font-medium">{prasad.name}</span>
-                    </span>
-                    <span className="font-semibold text-slate-900 notranslate">{money(prasad.price)}</span>
-                  </li>
-                )}
-                {!isPitruPuja && family.length > 0 && (
-                  <li className="flex justify-between items-center text-slate-700">
-                    <span className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-[10px] font-bold">{family.length}</span>
-                      <span className="font-medium">Additional Members</span>
-                    </span>
-                    <span className="font-semibold text-slate-900">{money(family.length * 50)}</span>
-                  </li>
-                )}
-                {pitruPujaExtraFee > 0 && (
-                  <li className="flex justify-between items-center text-slate-700">
-                    <span className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-[10px] font-bold">{trimmedAncestorNames.length - 1}</span>
-                      <span className="font-medium">Additional Ancestors</span>
-                    </span>
-                    <span className="font-semibold text-slate-900">{money(pitruPujaExtraFee)}</span>
-                  </li>
-                )}
-                {/* Upsell products in summary */}
-                {upsellProducts.filter((p) => addedUpsells[p.productName]).map((p) => (
-                  <li key={p.productName} className="flex justify-between items-center text-orange-700 bg-orange-50 px-2 py-1 rounded-lg border border-orange-100/50">
-                    <span className="flex items-center gap-2 font-medium">
-                      🛍️ {p.productName}
-                    </span>
-                    <span className="font-semibold notranslate">{money(p.discountedPrice ?? p.price)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          {isSummaryOpen && (
+            <>
+              {(basePuja?.temple || basePuja?.date) && (
+                <div className="flex items-stretch bg-[#9A3412] py-2.5 md:py-3 text-white">
+                  {basePuja?.temple && (
+                    <div className="flex items-center gap-2 md:gap-3 flex-1 px-3 md:px-4 min-w-0">
+                      <TempleHinduIcon style={{ fontSize: 22 }} className="shrink-0" />
+                      <div className="leading-tight min-w-0">
+                        <div className="italic text-[12px] md:text-[13px] break-words line-clamp-2">
+                          {basePuja.temple}
+                        </div>
+                        {/* Cleaned again here, not only where basePuja is built:
+                            a checkout opened before that fix still carries
+                            whatever sessionStorage holds. */}
+                        {displayPlace(basePuja?.templePlace) && (
+                          <div className="italic text-[10px] opacity-80 truncate">
+                            {displayPlace(basePuja.templePlace)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {basePuja?.temple && basePuja?.date && <div className="w-px bg-white/70 my-0.5" />}
+                  {basePuja?.date && (
+                    <div className="flex items-center gap-1.5 md:gap-2 shrink-0 min-w-fit pl-2.5 pr-2 md:basis-[30%] md:pl-3 whitespace-nowrap">
+                      <CalendarMonthIcon style={{ fontSize: 18 }} className="shrink-0" />
+                      <div className="italic text-[12px] md:text-[13px] leading-tight">
+                        {formatShortDate(basePuja.date)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
-            <div className="flex justify-between items-center pt-4 border-t-2 border-slate-100 border-dashed">
-              <span className="text-sm font-bold text-black uppercase tracking-wider">
-                Total Amount
-              </span>
-              <motion.span
-                className="text-3xl font-black text-slate-900"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                key={discountedTotalPrice} // Re-animate on change
-              >
-                {money(discountedTotalPrice)}
-              </motion.span>
-            </div>
-          </div>
+              <div className="bg-white px-3 md:px-4 py-3">
+                <h3 className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-2">
+                  Your selections
+                </h3>
+                <ul className="space-y-2 text-[13px]">
+                  {/* Combos first */}
+                  {Object.entries(selectedCombos).map(([id, qty]) => {
+                    const combo = comboPlans.find((c: any) => c.id === id);
+                    if (!combo) return null;
+                    return (
+                      <li key={combo.id} className="flex justify-between items-start gap-3 text-stone-700">
+                        <span className="flex items-start gap-2 min-w-0">
+                          <span className="w-5 h-5 shrink-0 rounded-full bg-[#FFF1E6] text-[#C2410C] flex items-center justify-center text-[10px] font-bold notranslate">
+                            {String(qty)}
+                          </span>
+                          <span className="break-words">{combo.title}</span>
+                        </span>
+                        <span className="shrink-0 whitespace-nowrap font-semibold text-stone-900 notranslate">
+                          {money(combo.price * Number(qty))}
+                        </span>
+                      </li>
+                    );
+                  })}
+                  {/* Then individual accessories */}
+                  {Object.entries(localSelected).map(([id, qty]) => {
+                    const acc = accessoriesList.find(
+                      (a: { id: string; name: string; price: number }) => a.id === id
+                    );
+                    return acc ? (
+                      <li key={id} className="flex justify-between items-start gap-3 text-stone-700">
+                        <span className="flex items-start gap-2 min-w-0">
+                          <span className="w-5 h-5 shrink-0 rounded-full bg-[#FFF1E6] text-[#C2410C] flex items-center justify-center text-[10px] font-bold notranslate">
+                            {String(qty)}
+                          </span>
+                          <span className="break-words">{acc.name}</span>
+                        </span>
+                        <span className="shrink-0 whitespace-nowrap font-semibold text-stone-900 notranslate">
+                          {money(acc.price * Number(qty))}
+                        </span>
+                      </li>
+                    ) : null;
+                  })}
+                  {/* Free Gifts */}
+                  {giftSelected && giftList && Object.entries(giftSelected).map(([id, isSelected]) => {
+                    if (!isSelected) return null;
+                    const gift = giftList.find((g: any) => g.id === id);
+                    if (!gift) return null;
+                    return (
+                      <li
+                        key={id}
+                        className="flex justify-between items-center gap-3 text-[#2E7D3E] bg-[#F0FAF0] border border-[#C8EAC8] px-2 py-1 rounded-lg"
+                      >
+                        <span className="min-w-0 break-words">🎁 {gift.title.replace(/^FREE\s*/i, "")}</span>
+                        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide">Free</span>
+                      </li>
+                    );
+                  })}
+                  {needPrasad && prasad && (
+                    <li className="flex justify-between items-start gap-3 text-stone-700">
+                      <span className="flex items-start gap-2 min-w-0">
+                        <span className="w-5 h-5 shrink-0 rounded-full bg-[#FFF1E6] text-[#C2410C] flex items-center justify-center text-[10px] font-bold">
+                          1
+                        </span>
+                        <span className="break-words">{prasad.name}</span>
+                      </span>
+                      <span className="shrink-0 whitespace-nowrap font-semibold text-stone-900 notranslate">
+                        {money(prasad.price)}
+                      </span>
+                    </li>
+                  )}
+                  {!isPitruPuja && family.length > 0 && (
+                    <li className="flex justify-between items-start gap-3 text-stone-700">
+                      <span className="flex items-start gap-2 min-w-0">
+                        <span className="w-5 h-5 shrink-0 rounded-full bg-[#FFF1E6] text-[#C2410C] flex items-center justify-center text-[10px] font-bold notranslate">
+                          {family.length}
+                        </span>
+                        <span className="break-words">Additional members</span>
+                      </span>
+                      <span className="shrink-0 whitespace-nowrap font-semibold text-stone-900 notranslate">
+                        {money(family.length * 50)}
+                      </span>
+                    </li>
+                  )}
+                  {pitruPujaExtraFee > 0 && (
+                    <li className="flex justify-between items-start gap-3 text-stone-700">
+                      <span className="flex items-start gap-2 min-w-0">
+                        <span className="w-5 h-5 shrink-0 rounded-full bg-[#FFF1E6] text-[#C2410C] flex items-center justify-center text-[10px] font-bold notranslate">
+                          {ancestorNames.length - 1}
+                        </span>
+                        <span className="break-words">Additional ancestors</span>
+                      </span>
+                      <span className="shrink-0 whitespace-nowrap font-semibold text-stone-900 notranslate">
+                        {money(pitruPujaExtraFee)}
+                      </span>
+                    </li>
+                  )}
+                  {/* Upsell products in summary */}
+                  {upsellProducts.filter((p) => addedUpsells[p.productName]).map((p) => (
+                    <li
+                      key={p.productName}
+                      className="flex justify-between items-center gap-3 text-[#C2410C] bg-[#FFF6EF] border border-[#F3D3B5] px-2 py-1 rounded-lg"
+                    >
+                      <span className="min-w-0 break-words">🛍️ {p.productName}</span>
+                      <span className="shrink-0 whitespace-nowrap font-semibold notranslate">
+                        {money(p.discountedPrice ?? p.price)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
         </motion.div>
 
         {/* Input Section */}
-        <motion.div variants={itemVariants} className="space-y-3">
-          <div id="whatsapp">
+        <motion.div variants={itemVariants} className="space-y-4">
+          <Card id="whatsapp">
+            <SectionHeading title="Add your WhatsApp number" />
             <ModernInput
-              label="WhatsApp Number"
+              label="WhatsApp number"
               value={whatsapp}
               onChange={(e: any) => {
                 const val = sanitizeWhatsapp(e.target.value);
@@ -1393,17 +1486,25 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
               error={errors.whatsapp}
               touched={touched.whatsapp}
               maxLength={country.phone[1]}
-              icon={
-                <span className="text-sm font-bold text-slate-700 bg-green-50 px-2.5 py-1.5 rounded-lg border border-green-200 whitespace-nowrap select-none">
-                  {country.flag} +{country.dial}
-                </span>
+              hint="Sewa updates will be sent to this number."
+              prefix={
+                <>
+                  <WhatsAppIcon style={{ fontSize: 18, color: "#25D366" }} />
+                  <span className="whitespace-nowrap notranslate">
+                    {country.flag} +{country.dial}
+                  </span>
+                </>
               }
             />
-          </div>
+          </Card>
 
-          <div id="name">
+          <Card id="name">
+            <SectionHeading
+              icon={<PersonOutlineIcon style={{ fontSize: 18, color: ORANGE }} />}
+              title="Enter the name of the devotee for the Sankalp"
+            />
             <ModernInput
-              label="Devotee Name"
+              label="Devotee name"
               value={name}
               onChange={(e: any) => {
                 const val = sanitizeName(e.target.value).slice(0, 25);
@@ -1411,259 +1512,293 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
                 if (touched.name) validateField("name", val);
               }}
               onBlur={() => handleBlur("name", name)}
-              placeholder="Full Name for Sankalp"
+              placeholder="Full name for the Sankalp"
               maxLength={30}
               error={errors.name}
               touched={touched.name}
+              hint="The pandit takes the Sankalp in this name."
             />
-          </div>
+          </Card>
 
           {/* Gotra Section */}
-          <motion.div variants={itemVariants} className="mb-4" id="gotra">
-            <label className="block text-xs font-bold text-black uppercase tracking-wider mb-1.5 ml-1">
-              Gotra
-            </label>
-            <div className={`relative bg-white rounded-xl border-2 overflow-hidden transition-all shadow-sm ${errors.gotra && touched.gotra && !dontKnowGotra ? "border-red-200 shadow-[0_0_0_4px_rgba(254,202,202,0.3)]" : "border-slate-100 focus-within:border-orange-300 focus-within:ring-4 focus-within:ring-orange-50"
-              }`}>
-              <div className="flex items-center">
-                <span className="pl-3 text-xl opacity-50 select-none">🕉</span>
-                <input
-                  value={gotra}
-                  onChange={(e: any) => {
-                    setGotra(e.target.value);
-                    if (touched.gotra) validateField("gotra", e.target.value);
-                  }}
-                  onBlur={() => handleBlur("gotra", gotra)}
-                  disabled={dontKnowGotra}
-                  className="w-full py-3 px-3 outline-none bg-transparent placeholder:text-slate-400 font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-                  placeholder={dontKnowGotra ? "Default (Kashyap)" : "Enter Gotra"}
-                />
-              </div>
-              <div className="border-t border-slate-50 bg-slate-50/80 px-4 py-2.5 flex items-center hover:bg-slate-100 transition-colors cursor-pointer" onClick={() => {
-                const newState = !dontKnowGotra;
-                setDontKnowGotra(newState);
-                if (newState) setErrors(prev => ({ ...prev, gotra: "" }));
-              }}>
-                <div className="relative flex items-center">
-                  <div className={`w-5 h-5 rounded border-2 mr-2 flex items-center justify-center transition-all ${dontKnowGotra ? "bg-orange-500 border-orange-500" : "border-slate-300"}`}>
-                    {dontKnowGotra && (
-                      <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className={`text-xs font-semibold select-none transition-colors ${dontKnowGotra ? "text-orange-700" : "text-slate-600"}`}>
-                    I don&apos;t know my Gotra
-                  </span>
-                </div>
-              </div>
+          <Card id="gotra">
+            <SectionHeading title="Add your Gotra" subtitle="Gotra of the devotee named above" />
+
+            <RequiredLabel>Gotra</RequiredLabel>
+            <div
+              className={`flex items-center gap-2 px-3 min-[360px]:px-4 ${fieldShell(
+                !dontKnowGotra && !!errors.gotra && !!touched.gotra
+              )}`}
+            >
+              <input
+                value={gotra}
+                onChange={(e: any) => {
+                  setGotra(e.target.value);
+                  if (touched.gotra) validateField("gotra", e.target.value);
+                }}
+                onBlur={() => handleBlur("gotra", gotra)}
+                disabled={dontKnowGotra}
+                aria-invalid={!dontKnowGotra && !!errors.gotra && !!touched.gotra}
+                className="flex-1 min-w-0 py-3 text-[14px] outline-none bg-transparent disabled:text-stone-400"
+                placeholder={dontKnowGotra ? "Default (Kashyap)" : "Enter Gotra"}
+              />
+              <InfoOutlinedIcon
+                style={{ fontSize: 18, color: ORANGE }}
+                titleAccess="Your Gotra identifies your ancestral lineage — the pandit uses it while taking the Sankalp for this sewa."
+              />
             </div>
             <InlineError message={!dontKnowGotra && touched.gotra ? errors.gotra : ""} />
-          </motion.div>
 
-          {/* Pitru Puja Section — ancestor names + preferred puja time */}
+            <label className="flex items-center gap-2 mt-3 text-[13px] text-stone-600">
+              <input
+                type="checkbox"
+                checked={dontKnowGotra}
+                onChange={(e) => {
+                  setDontKnowGotra(e.target.checked);
+                  if (e.target.checked) setErrors((prev) => ({ ...prev, gotra: "" }));
+                }}
+                className="w-4 h-4 accent-[#EA580C]"
+              />
+              I don&apos;t know my Gotra
+            </label>
+
+            {dontKnowGotra && (
+              <p className="text-[12px] text-[#2E7D3E] bg-[#F0FAF0] border border-[#C8EAC8] rounded-xl px-3 py-2 mt-2 leading-relaxed">
+                As per scriptures, the Sankalp can be taken with Kashyap Gotra, allowing you to receive the full
+                benefit of the sewa.
+              </p>
+            )}
+          </Card>
+
+          {/* Pitru Puja Section — ancestor names */}
           {isPitruPuja && (
-            <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-300 p-3 shadow-sm mb-2" id="pitruPujaDetails">
-              <div className="mb-2">
-                <label className="text-sm font-bold text-black block mb-1">
-                  Ancestors&apos; Names <span className="text-red-500">*</span>{" "}
-                  {pitruPujaPrice > 0 && (
-                    <span className="text-slate-400 font-normal">(@ {money(pitruPujaPrice)} each, first free)</span>
-                  )}
-                </label>
-                <p className="text-[10px] text-orange-800 font-medium leading-relaxed mb-2 opacity-80">
-                  This is a Pitru Puja — please add the name(s) of the ancestor(s) this ritual is being performed for.
-                </p>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full text-xs font-bold bg-orange-100/50 text-orange-700 px-3 py-2 rounded-xl border border-orange-100 shadow-sm hover:bg-orange-100 transition-all flex items-center justify-center gap-1"
-                  onClick={addAncestorName}
-                >
-                  <span>+</span> Add Ancestor
-                </motion.button>
+            <Card id="ancestorNames">
+              <SectionHeading
+                icon={<GroupsOutlinedIcon style={{ fontSize: 18, color: ORANGE }} />}
+                title="For which ancestor is this ritual being performed?"
+                subtitle={
+                  pitruPujaPrice > 0
+                    ? `First ancestor is included · ${money(pitruPujaPrice)} for each one after`
+                    : "Enter the name of the ancestor(s)"
+                }
+              />
+
+              <p className="text-[12px] text-stone-600 bg-[#FFF6EF] border border-[#F3D3B5] rounded-xl px-3 py-2 mb-3 leading-relaxed">
+                This is a Pitru Puja — please add the name(s) of the ancestor(s) this ritual is being performed
+                for.
+              </p>
+
+              <div className="space-y-3">
+                <AnimatePresence initial={false}>
+                  {ancestorNames.map((memberName, idx) => (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      style={{ overflow: "hidden" }}
+                      id={`ancestor_${idx}`}
+                    >
+                      {idx === 0 ? (
+                        <RequiredLabel>Name of 1st ancestor</RequiredLabel>
+                      ) : (
+                        <OptionalLabel>{`Name of ancestor ${idx + 1}`}</OptionalLabel>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`flex-1 min-w-0 flex items-stretch overflow-hidden ${fieldShell(
+                            !!errors[`ancestor_${idx}`] && !!touched[`ancestor_${idx}`]
+                          )}`}
+                        >
+                          <span
+                            className={`flex items-center px-3 bg-[#FFF1E6] text-[13px] font-semibold text-[#C2410C] border-r shrink-0 ${
+                              errors[`ancestor_${idx}`] && touched[`ancestor_${idx}`]
+                                ? "border-[#C0392B]"
+                                : "border-stone-300"
+                            }`}
+                          >
+                            Late
+                          </span>
+                          <input
+                            value={memberName}
+                            onChange={(e) => updateAncestorName(idx, e.target.value)}
+                            className="flex-1 min-w-0 px-3 py-3 text-[14px] outline-none bg-transparent"
+                            placeholder="Ancestor's name"
+                          />
+                        </div>
+                        {ancestorNames.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeAncestorName(idx)}
+                            aria-label={`Remove ancestor ${idx + 1}`}
+                            className="shrink-0 w-10 h-[46px] flex items-center justify-center rounded-xl border border-stone-300 text-stone-400 hover:text-[#C0392B] hover:border-[#C0392B] transition-colors"
+                          >
+                            <CloseIcon style={{ fontSize: 16 }} />
+                          </button>
+                        )}
+                      </div>
+                      <InlineError message={touched[`ancestor_${idx}`] ? errors[`ancestor_${idx}`] : ""} />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
 
-              <AnimatePresence initial={false}>
-                {ancestorNames.map((memberName, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mb-2 relative overflow-hidden"
-                    id={`ancestor_${idx}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className={`relative flex-1 flex items-stretch overflow-hidden rounded-xl border transition-all bg-white ${errors[`ancestor_${idx}`] && touched[`ancestor_${idx}`]
-                        ? "border-red-200 focus-within:border-red-400 focus-within:ring-2 focus-within:ring-red-50"
-                        : "border-slate-100 focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-50"
-                        }`}>
-                        <span className="flex items-center px-3 bg-orange-50 text-[11px] font-semibold text-orange-700 border-r border-slate-100 shrink-0">
-                          Late
-                        </span>
-                        <input
-                          value={memberName}
-                          onChange={(e) => updateAncestorName(idx, e.target.value)}
-                          className="flex-1 min-w-0 py-2 px-3 outline-none text-sm font-medium bg-transparent"
-                          placeholder={`Ancestor ${idx + 1} Name...`}
-                        />
-                      </div>
-                      {ancestorNames.length > 1 && (
-                        <motion.button
-                          whileHover={{ scale: 1.1, rotate: 90 }}
-                          whileTap={{ scale: 0.9 }}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-500 transition-colors shadow-sm border border-red-100"
-                          onClick={() => removeAncestorName(idx)}
-                        >
-                          ×
-                        </motion.button>
-                      )}
-                    </div>
-                    <div className="px-1">
-                      <InlineError message={touched[`ancestor_${idx}`] ? errors[`ancestor_${idx}`] : ""} />
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </motion.div>
+              <button
+                type="button"
+                onClick={addAncestorName}
+                className="flex items-center gap-1 mt-3 text-[13px] font-semibold text-[#C2410C]"
+              >
+                <AddIcon style={{ fontSize: 16 }} />
+                Add ancestor
+              </button>
+            </Card>
           )}
 
           {/* Family Members Section — Pitru Puja chadhavas collect ancestors instead */}
           {!isPitruPuja && (
-            <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-300 p-3 shadow-sm mb-2">
-              <div className="mb-2">
-                <label className="text-sm font-bold text-black block mb-1">
-                  Add Family Members <span className="text-slate-400 font-normal">(@ {money(50)} each)</span>
-                </label>
-                <p className="text-[10px] text-orange-800 font-medium leading-relaxed mb-2 opacity-80">
-                  Add family members to include them in the Sankalp. A small contribution is added per person.
-                </p>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full text-xs font-bold bg-orange-100/50 text-orange-700 px-3 py-2 rounded-xl border border-orange-100 shadow-sm hover:bg-orange-100 transition-all flex items-center justify-center gap-1"
-                  onClick={addFamilyMember}
-                >
-                  <span>+</span> Add Member
-                </motion.button>
-              </div>
+            <Card>
+              <SectionHeading
+                icon={<GroupsOutlinedIcon style={{ fontSize: 18, color: ORANGE }} />}
+                title="Include family members in the Sankalp"
+                subtitle={`${money(50)} per additional member`}
+              />
 
-              <AnimatePresence initial={false}>
-                {family.map((member, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mb-2 relative overflow-hidden"
-                    id={`family_${idx}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
-                        <input
-                          value={member}
-                          onChange={(e) => updateFamilyMember(idx, e.target.value)}
-                          className={`w-full py-2 pl-3 pr-3 bg-white rounded-xl border transition-all outline-none text-sm font-medium ${errors[`family_${idx}`] && touched[`family_${idx}`]
-                            ? "border-red-200 focus:border-red-400 focus:ring-2 focus:ring-red-50"
-                            : "border-slate-100 focus:border-orange-300 focus:ring-2 focus:ring-orange-50"
-                            }`}
-                          placeholder={`Member ${idx + 1} Name...`}
-                        />
-                      </div>
-                      <motion.button
-                        whileHover={{ scale: 1.1, rotate: 90 }}
-                        whileTap={{ scale: 0.9 }}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-500 transition-colors shadow-sm border border-red-100"
-                        onClick={() => removeFamilyMember(idx)}
+              {family.length === 0 ? (
+                <p className="text-[12px] text-stone-600 bg-[#FFF6EF] border border-[#F3D3B5] rounded-xl px-3 py-2 leading-relaxed">
+                  The Sankalp is taken in the devotee&apos;s name and its benefits reach the whole family. Add
+                  names here only if you want each member taken by name.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  <AnimatePresence initial={false}>
+                    {family.map((member, idx) => (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        style={{ overflow: "hidden" }}
+                        id={`family_${idx}`}
                       >
-                        ×
-                      </motion.button>
-                    </div>
-                    <div className="px-1">
-                      <InlineError message={touched[`family_${idx}`] ? errors[`family_${idx}`] : ""} />
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </motion.div>
+                        <OptionalLabel>{`Family member ${idx + 1}`}</OptionalLabel>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`flex-1 min-w-0 flex items-center ${fieldShell(
+                              !!errors[`family_${idx}`] && !!touched[`family_${idx}`]
+                            )}`}
+                          >
+                            <input
+                              value={member}
+                              onChange={(e) => updateFamilyMember(idx, e.target.value)}
+                              className="flex-1 min-w-0 px-3 py-3 text-[14px] outline-none bg-transparent"
+                              placeholder="Family member's name"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeFamilyMember(idx)}
+                            aria-label={`Remove family member ${idx + 1}`}
+                            className="shrink-0 w-10 h-[46px] flex items-center justify-center rounded-xl border border-stone-300 text-stone-400 hover:text-[#C0392B] hover:border-[#C0392B] transition-colors"
+                          >
+                            <CloseIcon style={{ fontSize: 16 }} />
+                          </button>
+                        </div>
+                        <InlineError message={touched[`family_${idx}`] ? errors[`family_${idx}`] : ""} />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={addFamilyMember}
+                className="flex items-center gap-1 mt-3 text-[13px] font-semibold text-[#C2410C]"
+              >
+                <AddIcon style={{ fontSize: 16 }} />
+                Add family member
+              </button>
+            </Card>
           )}
 
           {/* Address Section — only when prasad or gift is claimed */}
           {needAddress && (
-            <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-300 p-3 shadow-sm mt-2" id="address">
-              <div className="flex items-center gap-2 mb-2 px-1">
-                <span className="text-sm">📦</span>
-                <span className="text-xs font-bold text-black uppercase tracking-wider">Delivery Address</span>
-              </div>
-              <div id="address1">
-                <ModernInput
-                  label="Street Address / House No."
-                  value={address.address1}
-                  onChange={(e: any) => {
-                    setAddress((a) => ({ ...a, address1: e.target.value }));
-                    if (touched.address1) validateField("address1", e.target.value);
-                  }}
-                  onBlur={() => handleBlur("address1", address.address1)}
-                  placeholder="E.g. Flat 101, Om Shanti Apartments"
-                  error={errors.address1}
-                  touched={touched.address1}
-                />
-              </div>
+            <Card id="address">
+              <SectionHeading
+                icon={<LocalShippingOutlinedIcon style={{ fontSize: 18, color: ORANGE }} />}
+                title="Where should we courier your prasad?"
+              />
 
-              <div id="postal">
-                <ModernInput
-                  label="Pincode"
-                  value={address.postal}
-                  onChange={(e: any) => {
-                    let v = e.target.value.replace(/\D/g, "");
-                    if (v.length > 6) v = v.slice(0, 6);
-                    setAddress((a) => ({ ...a, postal: v }));
-                    if (touched.postal) validateField("postal", v);
-                  }}
-                  onBlur={() => handleBlur("postal", address.postal)}
-                  placeholder="110001"
-                  type="tel"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  error={errors.postal}
-                  touched={touched.postal}
-                  maxLength={6}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div id="city">
+              <div className="space-y-3">
+                <div id="address1">
                   <ModernInput
-                    label="City"
-                    value={address.city}
+                    label="Street address / house no."
+                    value={address.address1}
                     onChange={(e: any) => {
-                      setAddress((a) => ({ ...a, city: e.target.value }));
-                      if (touched.city) validateField("city", e.target.value);
+                      setAddress((a) => ({ ...a, address1: e.target.value }));
+                      if (touched.address1) validateField("address1", e.target.value);
                     }}
-                    onBlur={() => handleBlur("city", address.city)}
-                    placeholder="New Delhi"
-                    error={errors.city}
-                    touched={touched.city}
+                    onBlur={() => handleBlur("address1", address.address1)}
+                    placeholder="E.g. Flat 101, Om Shanti Apartments"
+                    error={errors.address1}
+                    touched={touched.address1}
                   />
                 </div>
 
-                <div id="state">
+                <div id="postal">
                   <ModernInput
-                    label="State"
-                    value={address.state}
+                    label="Pincode"
+                    value={address.postal}
                     onChange={(e: any) => {
-                      setAddress((a) => ({ ...a, state: e.target.value }));
-                      if (touched.state) validateField("state", e.target.value);
+                      let v = e.target.value.replace(/\D/g, "");
+                      if (v.length > 6) v = v.slice(0, 6);
+                      setAddress((a) => ({ ...a, postal: v }));
+                      if (touched.postal) validateField("postal", v);
                     }}
-                    onBlur={() => handleBlur("state", address.state)}
-                    placeholder="Delhi"
-                    error={errors.state}
-                    touched={touched.state}
+                    onBlur={() => handleBlur("postal", address.postal)}
+                    placeholder="110001"
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    error={errors.postal}
+                    touched={touched.postal}
+                    maxLength={6}
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div id="city">
+                    <ModernInput
+                      label="City"
+                      value={address.city}
+                      onChange={(e: any) => {
+                        setAddress((a) => ({ ...a, city: e.target.value }));
+                        if (touched.city) validateField("city", e.target.value);
+                      }}
+                      onBlur={() => handleBlur("city", address.city)}
+                      placeholder="New Delhi"
+                      error={errors.city}
+                      touched={touched.city}
+                    />
+                  </div>
+
+                  <div id="state">
+                    <ModernInput
+                      label="State"
+                      value={address.state}
+                      onChange={(e: any) => {
+                        setAddress((a) => ({ ...a, state: e.target.value }));
+                        if (touched.state) validateField("state", e.target.value);
+                      }}
+                      onBlur={() => handleBlur("state", address.state)}
+                      placeholder="Delhi"
+                      error={errors.state}
+                      touched={touched.state}
+                    />
+                  </div>
+                </div>
               </div>
-            </motion.div>
+            </Card>
           )}
 
           {/* ─── Upsell Product Card ─── */}
@@ -1954,92 +2089,226 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
 
         </motion.div>
 
-        <motion.div variants={itemVariants} className="mt-4 mb-32">
-          <div
-            className="group relative overflow-hidden rounded-2xl bg-white p-1 shadow-lg border border-slate-100 transition-all hover:shadow-orange-200/50 cursor-pointer"
-            onClick={() => setCouponModalVisible(true)}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-orange-50 via-white to-orange-50 opacity-50 group-hover:opacity-100 transition-opacity" />
-            <div className="relative flex items-center justify-between p-4 rounded-xl border border-dashed border-orange-200 bg-white/50 backdrop-blur-sm">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-400 to-red-500 text-white flex items-center justify-center shadow-lg shadow-orange-200 group-hover:scale-110 transition-transform duration-300">
-                  <LocalOfferIcon />
+        {/* Coupon */}
+        <Card>
+          <SectionHeading
+            icon={<LocalOfferIcon style={{ fontSize: 18, color: ORANGE }} />}
+            title="Apply Coupon"
+          />
+
+          {appliedCoupon ? (
+            <div className="flex items-center gap-2 min-[360px]:gap-3 rounded-xl border border-[#C8EAC8] bg-[#F0FAF0] px-2.5 min-[360px]:px-3 py-2.5">
+              <CheckCircleIcon style={{ fontSize: 22, color: "#2E9E45" }} />
+              <div className="flex-1 min-w-0 leading-tight">
+                <div translate="no" className="text-[14px] font-semibold text-stone-900 truncate">
+                  {appliedCoupon.promoName}
                 </div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-slate-800 text-base group-hover:text-orange-700 transition-colors">
-                    Have a Coupon Code?
-                  </span>
-                  <span className="text-xs text-slate-500 font-medium group-hover:text-slate-700 transition-colors">
-                    {appliedCoupon ? (
-                      <span key={appliedCoupon.code} className="inline-flex items-center">
-                        ✓ <span translate="no" className="mx-1">{appliedCoupon.code}</span> Applied!
-                      </span>
-                    ) : (
-                      "Tap to apply promo codes for discounts"
-                    )}
-                  </span>
+                <div className="text-[12px] text-[#2E7D3E] notranslate">
+                  You save {money(appliedCoupon.discountAmount)}
                 </div>
               </div>
-              <div className="flex items-center">
-                <span className={`text-xs font-bold px-4 py-2 rounded-full transition-all ${appliedCoupon ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700 group-hover:bg-orange-500 group-hover:text-white"}`}>
-                  {appliedCoupon ? "Change" : "Select"}
+              <button
+                type="button"
+                onClick={removeCoupon}
+                className="text-[13px] font-semibold text-[#C2410C] shrink-0"
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-2">
+                <div className={`flex-1 min-w-0 flex items-center px-3 ${fieldShell(!!couponError)}`}>
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => {
+                      setCouponCode(e.target.value);
+                      if (couponError) setCouponError("");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        applyCouponByCode(couponCode);
+                      }
+                    }}
+                    placeholder="Enter coupon code"
+                    autoCapitalize="characters"
+                    className="flex-1 min-w-0 py-3 text-[14px] uppercase placeholder:normal-case outline-none bg-transparent"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => applyCouponByCode(couponCode)}
+                  disabled={!!applyingCode}
+                  className="shrink-0 rounded-xl bg-gradient-to-r from-[#ff5a00] to-[#ff8a00] disabled:opacity-60 text-white text-[13px] min-[360px]:text-[14px] font-medium px-4 whitespace-nowrap"
+                >
+                  {applyingCode && applyingCode === couponCode.trim().toUpperCase() ? "Applying..." : "Apply"}
+                </button>
+              </div>
+              <InlineError message={couponError} />
+
+              {(isPromosLoading || listedPromos.length > 0) && (
+              <button
+                type="button"
+                onClick={() => setShowAllCoupons((v) => !v)}
+                aria-expanded={showAllCoupons}
+                className="flex items-center gap-1 mt-3 text-[13px] font-semibold text-[#C2410C]"
+              >
+                {showAllCoupons ? "Hide coupons" : "View all coupons"}
+                <KeyboardArrowDownIcon
+                  style={{
+                    fontSize: 18,
+                    transform: showAllCoupons ? "rotate(180deg)" : "none",
+                    transition: "transform 0.2s",
+                  }}
+                />
+              </button>
+              )}
+
+              {showAllCoupons && (
+                <div className="mt-2 space-y-2">
+                  {isPromosLoading && <p className="text-[12px] text-stone-500">Loading coupons…</p>}
+                  {listedPromos.map((promo) => {
+                    const isEligible = finalTotalPrice >= (promo.startRange || 0);
+                    const needed = (promo.startRange || 0) - finalTotalPrice;
+                    const isApplying = applyingCode === promo.promoName.toUpperCase();
+                    return (
+                      <div
+                        key={promo._id}
+                        className={`flex items-center gap-2 min-[360px]:gap-3 rounded-xl border border-dashed px-2.5 min-[360px]:px-3 py-2.5 ${
+                          isEligible ? "border-[#EA580C] bg-[#FFF6EF]" : "border-stone-300 bg-stone-50 opacity-70"
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0 leading-tight">
+                          <div
+                            translate="no"
+                            className="text-[13px] font-bold tracking-wide text-stone-900 break-words"
+                          >
+                            {promo.promoName}
+                          </div>
+                          {promo.firstOrderOnly && (
+                            <span className="inline-block rounded-full bg-[#FFF1E6] text-[#C2410C] text-[10px] font-semibold px-2 py-0.5 mt-1">
+                              First booking only
+                            </span>
+                          )}
+                          <div className="text-[12px] text-[#2E7D3E] mt-0.5 notranslate">
+                            Save {money(promo.discountAmount)}
+                          </div>
+                          {promo.description && (
+                            <div className="text-[11px] text-stone-500 mt-0.5 line-clamp-2">
+                              {promo.description}
+                            </div>
+                          )}
+                          {!isEligible && (
+                            <div className="text-[11px] text-stone-500 mt-0.5 notranslate">
+                              Add {money(needed)} more to unlock
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => applyCouponByCode(promo.promoName)}
+                          disabled={!isEligible || !!applyingCode}
+                          className="shrink-0 rounded-lg border border-[#EA580C] text-[#C2410C] disabled:border-stone-300 disabled:text-stone-400 text-[12px] font-semibold px-3 py-1.5"
+                        >
+                          {isApplying ? "Applying..." : "Apply"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {recommendedPromo && (
+                <p className="text-[12px] text-stone-600 mt-3">
+                  Tip: use{" "}
+                  <span translate="no" className="font-semibold text-stone-900">
+                    {recommendedPromo.promoName}
+                  </span>{" "}
+                  to save{" "}
+                  <span className="font-semibold text-[#2E7D3E] notranslate">
+                    {money(recommendedPromo.discountAmount)}
+                  </span>
+                  .
+                </p>
+              )}
+            </>
+          )}
+        </Card>
+
+        {/* Bill summary */}
+        <Card>
+          <SectionHeading title="Price Details" />
+          <div className="space-y-2 text-[13px] text-stone-600">
+            <div className="flex justify-between gap-2 min-[360px]:gap-3">
+              <span className="truncate">Sub total</span>
+              <span className="shrink-0 whitespace-nowrap text-stone-900 notranslate">
+                {money(finalTotalPrice)}
+              </span>
+            </div>
+            {appliedCoupon && (
+              <div className="flex justify-between gap-2 min-[360px]:gap-3 text-[#2E7D3E]">
+                <span className="truncate">
+                  Coupon (<span translate="no">{appliedCoupon.promoName}</span>)
+                </span>
+                <span className="shrink-0 whitespace-nowrap notranslate">
+                  − {money(appliedCoupon.discountAmount)}
                 </span>
               </div>
+            )}
+            <div className="flex justify-between gap-2 min-[360px]:gap-3 border-t border-dashed border-stone-300 pt-2 text-[15px] font-semibold text-[#C2410C]">
+              <span className="truncate">Amount to Pay</span>
+              <span className="shrink-0 whitespace-nowrap notranslate">{money(discountedTotalPrice)}</span>
             </div>
           </div>
+        </Card>
 
-          {recommendedCoupon && !appliedCoupon && (
-            <motion.div
-              initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
-              className="mt-3 flex items-center justify-center gap-2"
-            >
-              <span className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Recommended</span>
-              <div className="text-xs text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm flex items-center gap-2">
-                Use <span className="font-bold text-slate-800 font-mono bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{recommendedCoupon.code}</span> to save <span className="text-emerald-600 font-bold">{money(recommendedCoupon.discount)}</span>
-              </div>
-            </motion.div>
-          )}
-        </motion.div>
+        <div className="h-4" />
       </motion.div>
 
       {/* Styled Footer — hidden during payment verification / after payment */}
       <div ref={checkoutCartRef}>
-        {!verifying && <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full sm:w-[calc(100%-32px)] max-w-2xl bg-white/95 backdrop-blur-xl border border-slate-200 px-6 py-4 flex items-center justify-between z-[9999] shadow-[0_12px_40px_rgba(0,0,0,0.1)] rounded-t-3xl">
-          <div
-            className="flex flex-col cursor-pointer group"
-            onClick={() => setShowCartItems(!showCartItems)}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total to Pay</span>
-              <span className={`text-slate-400 transition-transform duration-300 ${showCartItems ? "rotate-180" : ""}`}>
-                <KeyboardArrowUpIcon fontSize="small" />
-              </span>
-            </div>
-            <motion.div
-              key={discountedTotalPrice}
-              initial={{ scale: 0.95, color: "#cbd5e1" }}
-              animate={{ scale: 1, color: "#0f172a" }}
-              className="text-2xl font-black text-slate-900 leading-none"
-            >
-              <span className="notranslate">{money(discountedTotalPrice)}</span>
-            </motion.div>
-          </div>
+        {!verifying && (
+          <div className="fixed bottom-0 inset-x-0 z-[9999] bg-white px-3 py-2.5 shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
+            <div className="max-w-2xl mx-auto flex items-stretch gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCartItems(!showCartItems)}
+                aria-expanded={showCartItems}
+                className="shrink-0 flex flex-col justify-center rounded-xl border border-stone-300 px-3 text-left"
+              >
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-stone-500 uppercase tracking-wide">
+                  Total
+                  <KeyboardArrowUpIcon
+                    style={{
+                      fontSize: 14,
+                      transform: showCartItems ? "rotate(180deg)" : "none",
+                      transition: "transform 0.2s",
+                    }}
+                  />
+                </span>
+                <span className="text-[17px] font-semibold text-stone-900 leading-tight notranslate">
+                  {money(discountedTotalPrice)}
+                </span>
+              </button>
 
-          <motion.button
-            whileHover={{ scale: 1.02, boxShadow: "0 20px 25px -5px rgba(234, 88, 12, 0.4)" }}
-            whileTap={{ scale: 0.98 }}
-            className="bg-gradient-to-r from-[#ff5a00] to-[#ff8a00] text-white pl-8 pr-8 py-3.5 rounded-2xl font-bold shadow-lg shadow-[0_12px_24px_rgba(255,90,0,0.35)] flex items-center gap-2 text-lg active:shadow-none transition-all hover:scale-[1.02]"
-            onClick={() => {
-              setShowCartItems(false);
-              // Frequently-added-together modal disabled for now; re-enable by
-              // swapping this for setFreqModalVisible(true) if needed later.
-              handlePay();
-            }}
-          >
-            <span>Pay Now</span>
-            <span className="bg-white/20 rounded-full w-6 h-6 flex items-center justify-center text-sm">→</span>
-          </motion.button>
-        </div>}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCartItems(false);
+                  // Frequently-added-together modal disabled for now; re-enable by
+                  // swapping this for setFreqModalVisible(true) if needed later.
+                  handlePay();
+                }}
+                className="flex-1 min-h-[52px] flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#ff5a00] to-[#ff8a00] text-white text-[15px] font-medium tracking-wide transition-transform active:scale-[0.99]"
+              >
+                Proceed to Pay
+                <span className="shrink-0">→</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Cart Popup */}
         <AnimatePresence>
@@ -2049,7 +2318,7 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed bottom-[105px] left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-2xl bg-white/95 backdrop-blur-xl border border-slate-200 shadow-[0_-20px_60px_rgba(0,0,0,0.08)] overflow-hidden z-[9998] rounded-3xl"
+              className="fixed bottom-[76px] left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-2xl bg-white/95 backdrop-blur-xl border border-slate-200 shadow-[0_-20px_60px_rgba(0,0,0,0.08)] overflow-hidden z-[9998] rounded-3xl"
             >
               <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
                 <div className="flex items-center justify-center mb-2">
@@ -2158,139 +2427,6 @@ const NewChadhavaPaymentPageContent: React.FC<{ navState: any }> = ({ navState }
           )}
         </AnimatePresence>
       </div>
-
-      <AnimatePresence>
-        {couponModalVisible && (
-          <motion.div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[99999]"
-            onClick={() => setCouponModalVisible(false)}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="bg-white rounded-3xl p-4 w-[90%] max-w-md shadow-2xl relative font-sans overflow-hidden"
-              initial={{ y: 50, scale: 0.95, opacity: 0 }}
-              animate={{ y: 0, scale: 1, opacity: 1 }}
-              exit={{ y: 50, scale: 0.95, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-br from-orange-400 to-red-500 opacity-10 pointer-events-none" />
-
-              <button
-                type="button"
-                onClick={() => setCouponModalVisible(false)}
-                className="absolute top-2 right-2 z-50 p-2 text-slate-400 hover:text-slate-600 hover:bg-black/5 rounded-full transition-all w-10 h-10 flex items-center justify-center active:scale-95"
-                aria-label="Close"
-              >
-                <span className="text-2xl leading-none">&times;</span>
-              </button>
-
-              <div className="relative mb-6">
-                <div className="flex items-center gap-3 mb-1">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-red-500 text-white flex items-center justify-center shadow-lg shadow-orange-200">
-                    <LocalOfferIcon fontSize="small" />
-                  </div>
-                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                    Offers
-                  </h2>
-                </div>
-                <p className="text-slate-500 text-sm ml-13">Best coupons for your sewa</p>
-              </div>
-
-              {/* Manual code entry */}
-              <div className="relative mb-6">
-                <div className="flex flex-wrap items-center bg-slate-50 border border-slate-200 rounded-xl p-1 focus-within:ring-2 focus-within:ring-orange-100 transition-all gap-1">
-                  <input
-                    type="text"
-                    placeholder="Enter promo code"
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value)}
-                    className="flex-1 min-w-[200px] p-3 bg-transparent outline-none text-slate-800 font-bold placeholder:font-normal placeholder:text-slate-400 tracking-wide uppercase text-sm"
-                  />
-                  <button
-                    onClick={() => {
-                      const ok = applyCouponByCode(couponCode);
-                      if (ok) setCouponModalVisible(false);
-                    }}
-                    className="flex-1 sm:flex-none px-6 py-2.5 bg-gradient-to-r from-[#ff5a00] to-[#ff8a00] text-white rounded-lg font-bold text-sm hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[0_8px_16px_rgba(255,90,0,0.2)]"
-                  >
-                    APPLY
-                  </button>
-                </div>
-                {couponError && (
-                  <div className="absolute top-full left-0 mt-2 text-red-500 text-xs font-bold flex items-center gap-1 pl-1">
-                    ⚠️ {couponError}
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-3 max-h-[50vh]  p-3 overflow-y-auto  custom-scrollbar-hide">
-                {coupons
-                  .filter((c) => c.visible)
-                  .map((c) => {
-                    const disabled = finalTotalPrice < c.minCartValue;
-                    const needed = c.minCartValue - finalTotalPrice;
-                    const selected =
-                      appliedCoupon && appliedCoupon.code === c.code;
-                    return (
-                      <motion.div
-                        key={c.code}
-                        whileHover={!disabled ? { scale: 1.02, y: -2 } : {}}
-                        whileTap={!disabled ? { scale: 0.98 } : {}}
-                        className={`relative p-3  rounded-2xl border-2 transition-all cursor-pointer overflow-hidden group ${disabled
-                          ? "border-slate-100 bg-slate-50 opacity-60 grayscale"
-                          : selected
-                            ? "border-emerald-500 bg-emerald-50 shadow-emerald-100 shadow-md"
-                            : "border-slate-100 bg-white hover:border-orange-200 hover:shadow-lg hover:shadow-orange-50"
-                          }`}
-                        onClick={() => {
-                          if (!disabled) {
-                            setAppliedCoupon(c);
-                            setCouponError("");
-                            notification.success({
-                              message: "Coupon Applied",
-                              description: `Congratulations! You saved ${money(c.discount)}!`,
-                              placement: "topRight",
-                            });
-                            setCouponModalVisible(false);
-                          }
-                        }}
-                      >
-                        {/* Ticket styling elements */}
-                        <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full border-r border-slate-200" />
-                        <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full border-l border-slate-200" />
-
-                        <div className="flex justify-between items-start mb-2 pl-3">
-                          <div>
-                            <span translate="no" className={`inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest mb-1 ${selected ? "bg-emerald-200 text-emerald-800" : "bg-slate-200 text-slate-600"}`}>
-                              {c.code}
-                            </span>
-                            <div className="text-xs text-slate-500 font-medium">
-                              Min order {money(c.minCartValue)}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className={`text-lg font-black ${selected ? "text-emerald-600" : "text-slate-800"}`}>
-                              Save {money(c.discount)}
-                            </div>
-                          </div>
-                        </div>
-
-                        {disabled && (
-                          <div className="mt-2 text-[10px] font-bold text-red-400 bg-red-50 p-1.5 rounded text-center">
-                            Add items worth {money(needed)} more to unlock
-                          </div>
-                        )}
-                      </motion.div>
-                    );
-                  })}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {freqModalVisible && (

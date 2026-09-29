@@ -6,6 +6,7 @@ import "@/lib/i18n"; // initializes i18next globally before any component render
 import type { ReactNode } from "react";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { Provider } from "react-redux";
+import { QueryClientProvider } from "@tanstack/react-query";
 import type { Query } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import type { PersistedClient, Persister } from "@tanstack/react-query-persist-client";
@@ -47,6 +48,40 @@ function createIDBPersister(key: IDBValidKey = "vedicvaibhav-react-query"): Pers
 const persister = createIDBPersister();
 
 /**
+ * IndexedDB persistence survives reloads (12h maxAge), which is exactly what
+ * makes local development confusing: a backend change can be invisible for
+ * hours because the browser is still replaying yesterday's cached response.
+ * Production keeps the persisted/offline cache; dev (`next dev`, NODE_ENV
+ * !== "production") stays memory-only so a reload always shows live data.
+ */
+function QueryProviders({ children }: { children: ReactNode }) {
+  if (process.env.NODE_ENV !== "production") {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  }
+
+  return (
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister,
+        maxAge: 12 * 60 * 60 * 1000, // 12 hours
+        buster: "vedic-vaibhav-v1",
+        dehydrateOptions: {
+          // persist only successful queries
+          shouldDehydrateQuery: (q: Query) => q.state.status === "success",
+        },
+      }}
+      onSuccess={() => {
+        // Cache restored from IndexedDB — resume any paused mutations (offline/online)
+        queryClient.resumePausedMutations();
+      }}
+    >
+      {children}
+    </PersistQueryClientProvider>
+  );
+}
+
+/**
  * Holds the ONLY subscription to the currency store.
  *
  * It sits here rather than in a context provider because ~50 files call a plain
@@ -76,26 +111,11 @@ export function AppProviders({ children }: { children: ReactNode }) {
      */
     <AntdRegistry>
       <Provider store={store}>
-        <PersistQueryClientProvider
-          client={queryClient}
-          persistOptions={{
-            persister,
-            maxAge: 12 * 60 * 60 * 1000, // 12 hours
-            buster: "vedic-vaibhav-v1",
-            dehydrateOptions: {
-              // persist only successful queries
-              shouldDehydrateQuery: (q: Query) => q.state.status === "success",
-            },
-          }}
-          onSuccess={() => {
-            // Cache restored from IndexedDB — resume any paused mutations (offline/online)
-            queryClient.resumePausedMutations();
-          }}
-        >
+        <QueryProviders>
           <MusicProvider>
             <CurrencyRoot>{children}</CurrencyRoot>
           </MusicProvider>
-        </PersistQueryClientProvider>
+        </QueryProviders>
       </Provider>
     </AntdRegistry>
   );

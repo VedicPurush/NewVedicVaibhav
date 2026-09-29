@@ -20,6 +20,7 @@ import { gtag } from "@/lib/gtag";
 import { useMoney, shipsPrasad, toInr } from "@/lib/currency";
 import { captureVvUtm } from "@/lib/utm";
 import { extractIdFromSlug } from "@/lib/slug";
+import { displayPlace } from "@/lib/place";
 import { useMusic } from "@/components/widgets/music/MusicContext";
 import ReviewPuja from "@/components/widgets/puja/ReviewPuja";
 
@@ -684,6 +685,10 @@ const NewChadhavaDetailContent = () => {
             chadhavaId: apiData?._id || "",
             title: apiData?.chadhavaName || "",
             temple: mandir?.nameEnglish || "",
+            // Second line under the mandir name on the checkout summary strip.
+            // displayPlace so a placeholder ("N/A") neither shows as a place nor
+            // blocks the fallback to city — "N/A" is truthy.
+            templePlace: displayPlace(mandir?.state) || displayPlace(mandir?.city),
             date: apiData?.availableDates?.[0] || "",
             rating: apiData?.rating || 4.8,
             ratingCount: 58,

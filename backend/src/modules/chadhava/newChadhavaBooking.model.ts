@@ -177,6 +177,12 @@ export interface IChadhavaBooking extends Document, IInternationalFields {
   address?: IAddress | null;
 
   totalPrice: number;
+  /** Coupon applied to this booking, as the server resolved it. Absent when none. */
+  promoCode?: string;
+  /** What the coupon took off, INR. 0 when no coupon was used. */
+  discountAmount?: number;
+  /** Cart value before the coupon, INR. Equals the payable total when none. */
+  originalAmount?: number;
   familyMembers: string[];
   gotra?: string | null;
   /** Snapshot of NewChadhavaData.isPitruPuja at booking time — same value as
@@ -339,6 +345,11 @@ const newChadhavaBookingSchema = new Schema<IChadhavaBooking>(
     address: { type: addressSchema, default: null },
 
     totalPrice: { type: Number, required: true },
+    // Written from resolvePromo's answer at order creation, so reporting can tell
+    // which bookings a coupon actually paid for.
+    promoCode: { type: String },
+    discountAmount: { type: Number, default: 0 },
+    originalAmount: { type: Number },
 
     familyMembers: { type: [{ type: String }], default: [] },
     gotra: { type: String, default: null },
