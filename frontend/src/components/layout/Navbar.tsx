@@ -2039,7 +2039,6 @@ const Navbar = ({ activeIndex }: { activeIndex?: string }) => {
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
-                paddingBottom: "5px",
               }}
             >
               {/* Mobile header logo — the LCP element on phones. Same reasoning
@@ -2053,7 +2052,7 @@ const Navbar = ({ activeIndex }: { activeIndex?: string }) => {
                 src="https://vedic-vaibhav.blr1.cdn.digitaloceanspaces.com/vedic-vaibhav/logo/vvfinallogo.png"
                 width={828}
                 height={640}
-                style={{ width: "30%", height: "60px", objectFit: "contain" }}
+                style={{ width: "30%", height: "46px", objectFit: "contain" }}
               />
             </Col>
 
@@ -2114,7 +2113,7 @@ const Navbar = ({ activeIndex }: { activeIndex?: string }) => {
         <div style={{ height: "30px" }}></div>
       </Col>
       <Col xl={0} lg={0} md={0} sm={24} xs={24}>
-        <div style={{ height: "40px" }}></div>
+        <div style={{ height: "28px" }}></div>
       </Col>
     </div>
   );

@@ -569,7 +569,8 @@ export const getPoojaDashboardStats = async (req: Request, res: Response) => {
  * the amount the client asked us to charge.
  *
  * Only bookings tagged `poojaSource: "new"` are verified, because their total
- * is a closed formula: base price + one per-member charge per extra bhakta.
+ * is a closed formula: either the chosen package's price, or — for poojas with
+ * no packages — base price plus one per-member charge per extra bhakta.
  * Legacy bookings mix coupons, promo codes, idols, prasad and ad-hoc add-on
  * rows, so recomputing them here would reject valid orders. Those are logged
  * and left alone.
@@ -585,10 +586,33 @@ const verifyOrderAmount = async (
   const pooja = await NewPooja.findById(bookingDetails?.poojaID).lean();
   if (!pooja) return "Unknown pooja for this order.";
 
-  const base = pooja.discountPrice ?? pooja.originalPrice ?? 0;
-  // bhaktaNames[0] is the yajmaan, covered by the base price
+  // bhaktaNames[0] is the yajmaan; everyone after is a family member
   const extraMembers = Math.max(0, (bookingDetails?.bhaktaNames?.length || 1) - 1);
-  const expectedRupees = base + extraMembers * (pooja.familyMemberPrice ?? 101);
+  const packages = Array.isArray(pooja.packages) ? pooja.packages : [];
+
+  let expectedRupees: number;
+  if (packages.length > 0) {
+    /**
+     * Keyed by the package `label` (a real catalog field), the same way the
+     * pitru puja module prices its bookings — a tampered request can change
+     * which package it claims, never what that package costs.
+     */
+    const pkg = packages.find((p) => p.label === bookingDetails?.packageLabel);
+    if (!pkg) return "Selected package no longer exists for this pooja.";
+
+    // The yajmaan is always included on top of personCount — personCount is
+    // how many ADDITIONAL family members the package price covers, not the
+    // total headcount. The package sets a ceiling, not a quota: naming fewer
+    // still pays the same price; naming more would be a discount.
+    const maxFamilyMembers = pkg.personCount;
+    if (extraMembers > maxFamilyMembers) {
+      return `Package "${pkg.label}" covers up to ${maxFamilyMembers} family member(s), got ${extraMembers}.`;
+    }
+    expectedRupees = pkg.price;
+  } else {
+    const base = pooja.discountPrice ?? pooja.originalPrice ?? 0;
+    expectedRupees = base + extraMembers * (pooja.familyMemberPrice ?? 101);
+  }
 
   // compare in paise; prices may carry decimals, so never trust float equality
   const expectedPaise = Math.round(expectedRupees * 100);
@@ -762,6 +786,7 @@ export const finalizePoojaBookingRecord = async ({
     poojaID: details.poojaID,
     totalPrice: details.totalPrice,
     package: details.package,
+    packageLabel: details.packageLabel || null,
 
     /**
      * International presentment, carried through the pending record's Mixed

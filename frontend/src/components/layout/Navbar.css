@@ -80,25 +80,28 @@
    the hero at every desktop width — and got worse as the link text grew, since
    that made the pill taller without changing the spacer at all. */
 .header-offset {
-  /* The mobile header is 36px announcement bar + 65px logo row = 101px, constant
-     at every phone width (measured 360/395/430). A static 41px block sits above
-     this element in flow, so the margin only has to make up the rest: 60px puts
-     content exactly at the header's bottom edge, and 80px leaves the same ~20px
-     of breathing room the desktop spacer below ends up with.
+  /* The mobile header is 36px announcement bar + 46px logo row = 82px, constant
+     at every phone width. A static 29px block sits above this element in flow
+     (the 28px spacer Col in Navbar.tsx plus its 1px), so the margin only has to
+     make up the rest: 53px puts content exactly at the header's bottom edge,
+     and 62px leaves ~8px of breathing room.
 
-     Clearing the FULL 101px box matters here in a way it does not on desktop,
+     Clearing the FULL 82px box matters here in a way it does not on desktop,
      where the spacer deliberately stops at the logo's visible end. The mobile
      header paints no background of its own under the announcement bar — the
      cream and the bells are the page background showing through it — so
-     anything a page draws above 101px is drawn *behind the logo*. At the old
-     value a dark hero cut the wordmark in half.
+     anything a page draws above 82px is drawn *behind the logo*. At a smaller
+     value a dark hero cuts the wordmark in half.
+
+     Keep this in step with the logo's height and the spacer Col in Navbar.tsx —
+     both feed the 82px above.
 
      A percentage cannot express a height: margin-top percentages resolve
      against WIDTH, so the old `12%` reserved 43px at 360px and 52px at 430px
-     for a header that is 101px at both, leaving ~17px of every page tucked
-     under it. That is the same bug the note above says the desktop spacer was
-     rewritten to fix, left behind on mobile. */
-  margin-top: 80px;
+     for a header that is the same height at both, leaving part of every page
+     tucked under it. That is the same bug the note above says the desktop
+     spacer was rewritten to fix, left behind on mobile. */
+  margin-top: 62px;
 }
 
 @media screen and (min-width: 768px) {

@@ -24,6 +24,27 @@ interface IMandirDetails {
   darshanSeason?: string;
   timings?: string;
   image?: string;
+  /**
+   * Whether this puja's prasad can be shipped. Mirrors `Mandir.isPrasadAvailable`
+   * and `AppPersonalizedPooja.isPrasadAvailable`. NOTE: even when true, prasad
+   * dispatch (pandit lookup -> pincode -> Shiprocket) needs a real `mandirId`
+   * ref, which this embedded shape does not have yet — see the warning in
+   * poojaBooking.controller.ts's booking-creation flow.
+   */
+  isPrasadAvailable?: boolean;
+}
+
+/**
+ * A bookable tier: one price covering up to `personCount` family members in the
+ * sankalp, on top of the yajmaan. Same shape the pitru puja catalog uses.
+ * Written by the external admin tool, so it is declared here only so this
+ * repo can read and price it — nothing in this repo writes a pooja document.
+ */
+interface INewPoojaPackage {
+  personCount: number;
+  price: number;
+  label: string;
+  image?: string;
 }
 
 interface IIdolDetails {
@@ -74,7 +95,18 @@ export interface INewPooja extends Document {
   originalPrice: number;
   discountPrice: number;
   familyMemberPrice: number;
+  packages: INewPoojaPackage[];
 }
+
+const newPoojaPackageSchema = new Schema<INewPoojaPackage>(
+  {
+    personCount: { type: Number, required: true },
+    price: { type: Number, required: true },
+    label: { type: String, required: true, trim: true },
+    image: { type: String, trim: true, default: "" },
+  },
+  { _id: false },
+);
 
 const mandirDetailsSchema = new Schema<IMandirDetails>({
   name: { type: String, trim: true },
@@ -88,6 +120,7 @@ const mandirDetailsSchema = new Schema<IMandirDetails>({
   darshanSeason: { type: String, trim: true },
   timings: { type: String, trim: true },
   image: { type: String },
+  isPrasadAvailable: { type: Boolean, default: false },
 });
 
 const idolDetailsSchema = new Schema<IIdolDetails>(
@@ -147,6 +180,9 @@ const newPoojaSchema = new Schema<INewPooja>(
     // document so the server can verify the order total independently of
     // whatever the browser claims it is.
     familyMemberPrice: { type: Number, default: 101 },
+    // When present these replace the base + per-member pricing above: the
+    // chosen package's price is the whole order. See verifyOrderAmount.
+    packages: { type: [newPoojaPackageSchema], default: [] },
   },
   { timestamps: true, autoIndex: true },
 );

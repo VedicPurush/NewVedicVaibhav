@@ -40,6 +40,9 @@ export interface IPoojaBooking extends Document, IInternationalFields {
   bookingDate: Date;
   completeDate: Date | null;
   package: string;
+  /** Which catalog package (newpoojas.packages[].label) this order was priced
+   *  against — see verifyOrderAmount. Absent for poojas with no packages. */
+  packageLabel?: string;
   gotra: string[];
   bhaktaNames: string[];
   dakshinaToPandit: number | null;
@@ -136,6 +139,7 @@ const poojaBookingSchema = new Schema<IPoojaBooking>(
     bookingDate: { type: Date, default: Date.now, required: true },
     completeDate: { type: Date, default: null },
     package: { type: String, required: true },
+    packageLabel: { type: String, default: null },
     gotra: { type: [String], required: true },
     bhaktaNames: { type: [String], required: true },
     dakshinaToPandit: { type: Number, default: null },
