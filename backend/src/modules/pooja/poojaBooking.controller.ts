@@ -3,7 +3,7 @@ import axios from "axios";
 import { Parser } from "@json2csv/plainjs";
 
 import PoojaBooking, { type IPoojaBooking } from "./poojaBooking.model";
-import NewPooja from "./newPooja.model";
+import NewPooja, { PRASAD_PRICE_INR } from "./newPooja.model";
 import PendingBooking, { type IPendingBooking } from "./pendingPoojaBooking.model";
 import { findPitruPujaBookingsByMobile } from "../pitru-puja/pitruPujaBooking.profile";
 import { env } from "../../config/env";
@@ -570,7 +570,8 @@ export const getPoojaDashboardStats = async (req: Request, res: Response) => {
  *
  * Only bookings tagged `poojaSource: "new"` are verified, because their total
  * is a closed formula: either the chosen package's price, or — for poojas with
- * no packages — base price plus one per-member charge per extra bhakta.
+ * no packages — base price plus one per-member charge per extra bhakta; plus a
+ * flat prasad charge on either path when the devotee opted into delivery.
  * Legacy bookings mix coupons, promo codes, idols, prasad and ad-hoc add-on
  * rows, so recomputing them here would reject valid orders. Those are logged
  * and left alone.
@@ -612,6 +613,16 @@ const verifyOrderAmount = async (
   } else {
     const base = pooja.discountPrice ?? pooja.originalPrice ?? 0;
     expectedRupees = base + extraMembers * (pooja.familyMemberPrice ?? 101);
+  }
+
+  /**
+   * Prasad delivery is a flat add-on on top of either pricing path.
+   * `isAddressSelected` is the booking's own record of the devotee opting in —
+   * the same flag every downstream prasad consumer is gated behind — so it is
+   * what decides whether they are charged for it.
+   */
+  if (bookingDetails?.isAddressSelected) {
+    expectedRupees += pooja.prasadPrice ?? PRASAD_PRICE_INR;
   }
 
   // compare in paise; prices may carry decimals, so never trust float equality
@@ -787,6 +798,7 @@ export const finalizePoojaBookingRecord = async ({
     totalPrice: details.totalPrice,
     package: details.package,
     packageLabel: details.packageLabel || null,
+    prasadAmount: details.prasadAmount ?? 0,
 
     /**
      * International presentment, carried through the pending record's Mixed

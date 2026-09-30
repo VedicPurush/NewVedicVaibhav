@@ -78,6 +78,13 @@ export const toPaise = (rupees: number) => Math.round((Number(rupees) || 0) * 10
    not carry yet. See the "NOT IN API" notes on each one — once the backend
    grows these fields, read them off the document instead.
    ========================================================================== */
+/**
+ * Flat charge for prasad delivery, used when a pooja document predates the
+ * `prasadPrice` field. Mirrors PRASAD_PRICE_INR in backend newPooja.model.ts,
+ * which is what verifyOrderAmount prices against — keep the two in step.
+ */
+export const PRASAD_PRICE_INR = 298;
+
 export const STATIC = {
   bannerTitle: "Reserve Your Sankalp",
   shastraQuoteIntro: "The shastra says:",
@@ -190,11 +197,20 @@ export const buildViewModel = (
     isExpired,
 
     /**
-     * Whether this puja's prasad can be shipped. `false` for legacy poojas
-     * whose mandir hasn't loaded yet (`mandir` starts undefined), so the
-     * prasad section only appears once that answer is actually known.
+     * Whether this puja's prasad can be shipped. New poojas carry the flag on
+     * the document itself (same placement as `isIdolAvailable`); legacy poojas
+     * carry it on their referenced Mandir, so it reads `false` until that
+     * second fetch lands and the prasad section only appears once the answer
+     * is actually known.
      */
-    isPrasadAvailable: isNew ? !!md?.isPrasadAvailable : !!mandir?.isPrasadAvailable,
+    isPrasadAvailable: isNew ? !!pooja?.isPrasadAvailable : !!mandir?.isPrasadAvailable,
+
+    /**
+     * Flat charge added when the devotee opts into prasad delivery. Must match
+     * what verifyOrderAmount recomputes server-side (`prasadPrice` on the pooja,
+     * falling back to the same constant) or the order is rejected.
+     */
+    prasadPrice: Number(pooja?.prasadPrice) || PRASAD_PRICE_INR,
 
     basePrice,
     // shown struck through when it is genuinely higher than what is charged

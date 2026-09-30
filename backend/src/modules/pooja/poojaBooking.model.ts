@@ -43,6 +43,13 @@ export interface IPoojaBooking extends Document, IInternationalFields {
   /** Which catalog package (newpoojas.packages[].label) this order was priced
    *  against — see verifyOrderAmount. Absent for poojas with no packages. */
   packageLabel?: string;
+  /**
+   * INR actually charged for prasad delivery on this order, 0 when the devotee
+   * did not take it. Snapshotted at booking time so it stays correct if the
+   * catalog price changes later — and so "was prasad bought?" is answerable
+   * directly, rather than inferred from `isAddressSelected`.
+   */
+  prasadAmount?: number;
   gotra: string[];
   bhaktaNames: string[];
   dakshinaToPandit: number | null;
@@ -140,6 +147,7 @@ const poojaBookingSchema = new Schema<IPoojaBooking>(
     completeDate: { type: Date, default: null },
     package: { type: String, required: true },
     packageLabel: { type: String, default: null },
+    prasadAmount: { type: Number, default: 0 },
     gotra: { type: [String], required: true },
     bhaktaNames: { type: [String], required: true },
     dakshinaToPandit: { type: Number, default: null },

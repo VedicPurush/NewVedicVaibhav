@@ -79,7 +79,8 @@ const EnterPujaBookingPage = () => {
    */
   const selectedPackage = PUJA.packages.find((pkg) => pkg.label === packageLabel) ?? null;
   const needsPackageChoice = PUJA.packages.length > 0 && !selectedPackage;
-  const total = selectedPackage?.price ?? PUJA.basePrice;
+  /** The seva itself, before any add-on. `total` below adds prasad to this. */
+  const sevaPrice = selectedPackage?.price ?? PUJA.basePrice;
 
   const [isSummaryOpen, setIsSummaryOpen] = useState(true);
 
@@ -101,11 +102,16 @@ const EnterPujaBookingPage = () => {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [country, setCountry] = useState("India");
-  const [serviceAvailable, setServiceAvailable] = useState<boolean | null>(null);
-  const [cheapestCourier, setCheapestCourier] = useState<any>(null);
-  const [estimatedDays, setEstimatedDays] = useState("");
-  const [pincodeErrorMessage, setPincodeErrorMessage] = useState("");
-  const [pincodeLoading, setPincodeLoading] = useState(false);
+
+  /**
+   * One source of truth for "is prasad part of this order": it drives the
+   * charge, the address validation and the `isAddressSelected` flag sent to
+   * the server. Deriving them separately risks charging for prasad without
+   * flagging it (or vice versa), which verifyOrderAmount rejects outright.
+   */
+  const wantsPrasad = PUJA.isPrasadAvailable && needPrasad;
+  const prasadCharge = wantsPrasad ? PUJA.prasadPrice : 0;
+  const total = sevaPrice + prasadCharge;
 
   // The yajmaan is always included on top — personCount is how many
   // ADDITIONAL family members the package price covers, not the total headcount.
@@ -124,55 +130,6 @@ const EnterPujaBookingPage = () => {
 
   const updateMember = (index: number, field: keyof Member, value: string) =>
     setMembers((prev) => prev.map((m, i) => (i === index ? { ...m, [field]: value } : m)));
-
-  /**
-   * Checked against `resolvedMandirID`, the same id the booking itself will
-   * send — for a legacy puja that's a real Mandir document and this works;
-   * for a new-source puja it currently resolves to nothing (see the note by
-   * `resolvedMandirID` above), so this call will just report no service
-   * until that gets a real `mandirId` ref.
-   */
-  const handlePincodeChange = async (value: string) => {
-    setPincode(value);
-    if (value.length !== 6) {
-      setPincodeLoading(false);
-      setServiceAvailable(null);
-      setCheapestCourier(null);
-      setEstimatedDays("");
-      setPincodeErrorMessage("");
-      return;
-    }
-    try {
-      setPincodeLoading(true);
-      setServiceAvailable(null);
-      setEstimatedDays("");
-      setCheapestCourier(null);
-      setPincodeErrorMessage("");
-
-      if (!resolvedMandirID) {
-        setServiceAvailable(false);
-        setPincodeErrorMessage("Temple details not loaded yet. Cannot check serviceability.");
-        return;
-      }
-
-      const response = await api.get(
-        `/serviceability/check?pincode=${value}&mandirId=${resolvedMandirID}`
-      );
-      if (response.data.serviceAvailable) {
-        setServiceAvailable(true);
-        setCheapestCourier(response.data.cheapestCourier);
-        setEstimatedDays(response.data.cheapestCourier?.estimated_delivery_days || "");
-      } else {
-        setServiceAvailable(false);
-        setPincodeErrorMessage(response.data.message || "Delivery not available at this pincode.");
-      }
-    } catch (err: any) {
-      setServiceAvailable(false);
-      setPincodeErrorMessage(err.response?.data?.message || "Error while checking serviceability.");
-    } finally {
-      setPincodeLoading(false);
-    }
-  };
 
   /** Slots the devotee actually filled in — blanks are dropped, never sent. */
   const namedMembers = members
@@ -202,8 +159,8 @@ const EnterPujaBookingPage = () => {
       if (memberGotra.length < 2) next[`f-${i}-gotra`] = `Enter family member ${i + 1}'s gotra`;
     });
 
-    if (needPrasad) {
-      if (address1.trim().length < 10) next.address1 = "Please enter a complete address (min 10 chars).";
+    if (wantsPrasad) {
+      if (!address1.trim()) next.address1 = "Address is required.";
       if (!/^[1-9]\d{5}$/.test(pincode)) next.pincode = "Enter a valid 6-digit PIN code.";
       if (!city.trim()) next.city = "City is required.";
       if (!state.trim()) next.state = "State is required.";
@@ -289,14 +246,30 @@ const EnterPujaBookingPage = () => {
         donateToMandir: null,
         brahmanBhoj: null,
         poojaStatus: "booked",
-        isAddressSelected: needPrasad,
-        prasadStatus: "pending",
-        address1: needPrasad ? address1.trim() : "",
-        address2: needPrasad ? address2.trim() : "",
-        city: needPrasad ? city.trim() : "",
-        state: needPrasad ? state.trim() : "",
-        country: needPrasad ? country.trim() : "",
-        pincode: needPrasad ? Number(pincode) || 0 : 0,
+        isAddressSelected: wantsPrasad,
+        // what prasad actually cost on this order — 0 when not taken, so the
+        // booking answers "was prasad bought?" without inferring it
+        prasadAmount: prasadCharge,
+        /**
+         * "pending" means a real prasad awaiting dispatch; "N/A" means none was
+         * bought. Every pooja booking used to say "pending" regardless, which
+         * made the field useless for filtering and showed a misleading
+         * "pending" in the booking report and confirmation email.
+         *
+         * Sent as a non-empty string on purpose: finalizePoojaBookingRecord
+         * does `details.prasadStatus || "pending"`, so anything falsy here
+         * would be rewritten back to "pending". Passing an explicit value
+         * bypasses that fallback without the controller needing to change —
+         * which keeps the legacy Payment.tsx flow (always "pending") exactly
+         * as it was.
+         */
+        prasadStatus: wantsPrasad ? "pending" : "N/A",
+        address1: wantsPrasad ? address1.trim() : "",
+        address2: wantsPrasad ? address2.trim() : "",
+        city: wantsPrasad ? city.trim() : "",
+        state: wantsPrasad ? state.trim() : "",
+        country: wantsPrasad ? country.trim() : "",
+        pincode: wantsPrasad ? Number(pincode) || 0 : 0,
         email,
         firstname,
         lastname,
@@ -726,7 +699,12 @@ const EnterPujaBookingPage = () => {
                 className="w-4 h-4"
                 style={{ accentColor: P.navy }}
               />
-              I want prasad delivered to my home
+              <span>
+                I want prasad delivered to my home
+                <span className="font-semibold ml-1" style={{ color: P.orange }}>
+                  (+{money(PUJA.prasadPrice)})
+                </span>
+              </span>
             </label>
 
             {needPrasad && (
@@ -767,7 +745,7 @@ const EnterPujaBookingPage = () => {
                   <div className={FIELD_CLASS} style={fieldStyle(P, !!errors.pincode)}>
                     <input
                       value={pincode}
-                      onChange={(e) => handlePincodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      onChange={(e) => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                       type="tel"
                       inputMode="numeric"
                       maxLength={6}
@@ -777,30 +755,8 @@ const EnterPujaBookingPage = () => {
                       className={inputClass}
                       style={{ color: P.ink }}
                     />
-                    {pincodeLoading && (
-                      <svg
-                        className="animate-spin w-4 h-4 shrink-0 self-center mr-3"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        style={{ color: P.navy }}
-                        aria-hidden="true"
-                      >
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                      </svg>
-                    )}
                   </div>
                   <FieldError message={errors.pincode} />
-                  {serviceAvailable === true && (
-                    <p className="text-[12px] mt-1.5" style={{ color: "#2E7D3E" }}>
-                      ✓ Delivery is available. Estimated delivery in {estimatedDays || "a few"} days.
-                    </p>
-                  )}
-                  {serviceAvailable === false && pincodeErrorMessage && (
-                    <p className="text-[12px] mt-1.5" style={{ color: "#C0392B" }}>
-                      {pincodeErrorMessage}
-                    </p>
-                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -861,7 +817,7 @@ const EnterPujaBookingPage = () => {
             <div className="flex justify-between gap-2 min-[360px]:gap-3">
               <span className="truncate">{selectedPackage?.label || PUJA.basePriceLabel}</span>
               <span className="shrink-0 whitespace-nowrap" style={{ color: P.ink }}>
-                {money(total)}
+                {money(sevaPrice)}
               </span>
             </div>
             {namedMembers.length > 0 && (
@@ -869,6 +825,14 @@ const EnterPujaBookingPage = () => {
                 <span className="truncate">Family members named</span>
                 <span className="shrink-0 whitespace-nowrap" style={{ color: P.ink }}>
                   {namedMembers.length} of {members.length}
+                </span>
+              </div>
+            )}
+            {prasadCharge > 0 && (
+              <div className="flex justify-between gap-2 min-[360px]:gap-3">
+                <span className="truncate">Prasad delivery</span>
+                <span className="shrink-0 whitespace-nowrap" style={{ color: P.ink }}>
+                  {money(prasadCharge)}
                 </span>
               </div>
             )}

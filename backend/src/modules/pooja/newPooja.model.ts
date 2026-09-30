@@ -24,14 +24,6 @@ interface IMandirDetails {
   darshanSeason?: string;
   timings?: string;
   image?: string;
-  /**
-   * Whether this puja's prasad can be shipped. Mirrors `Mandir.isPrasadAvailable`
-   * and `AppPersonalizedPooja.isPrasadAvailable`. NOTE: even when true, prasad
-   * dispatch (pandit lookup -> pincode -> Shiprocket) needs a real `mandirId`
-   * ref, which this embedded shape does not have yet — see the warning in
-   * poojaBooking.controller.ts's booking-creation flow.
-   */
-  isPrasadAvailable?: boolean;
 }
 
 /**
@@ -87,6 +79,14 @@ export interface INewPooja extends Document {
   isExclusive: boolean;
   isFeatured: boolean;
   isIdolAvailable: boolean;
+  /**
+   * Whether this puja's prasad can be shipped — set in the admin panel, same
+   * placement as `isIdolAvailable` here and as `isPrasadAvailable` on the
+   * Mandir / AppPersonalizedPooja documents. NOTE: even when true, dispatch
+   * (pandit lookup -> pincode -> Shiprocket) needs a real `mandirId` ref,
+   * which this collection's embedded `mandirDetails` does not carry yet.
+   */
+  isPrasadAvailable: boolean;
   poojaDates: Date[];
   mandirDetails: IMandirDetails[];
   idolDetails: IIdolDetails;
@@ -95,8 +95,16 @@ export interface INewPooja extends Document {
   originalPrice: number;
   discountPrice: number;
   familyMemberPrice: number;
+  prasadPrice: number;
   packages: INewPoojaPackage[];
 }
+
+/**
+ * Flat charge for prasad delivery, used both as the schema default and as the
+ * fallback when reading a document written before `prasadPrice` existed.
+ * The frontend keeps its own copy of this number — keep the two in step.
+ */
+export const PRASAD_PRICE_INR = 298;
 
 const newPoojaPackageSchema = new Schema<INewPoojaPackage>(
   {
@@ -120,7 +128,6 @@ const mandirDetailsSchema = new Schema<IMandirDetails>({
   darshanSeason: { type: String, trim: true },
   timings: { type: String, trim: true },
   image: { type: String },
-  isPrasadAvailable: { type: Boolean, default: false },
 });
 
 const idolDetailsSchema = new Schema<IIdolDetails>(
@@ -168,6 +175,7 @@ const newPoojaSchema = new Schema<INewPooja>(
     isExclusive: { type: Boolean, default: false },
     isFeatured: { type: Boolean, default: false },
     isIdolAvailable: { type: Boolean, default: false },
+    isPrasadAvailable: { type: Boolean, default: false },
     // scheduled dates this pooja is performed on
     poojaDates: { type: [Date], default: [] },
     mandirDetails: { type: [mandirDetailsSchema], default: [] },
@@ -180,6 +188,11 @@ const newPoojaSchema = new Schema<INewPooja>(
     // document so the server can verify the order total independently of
     // whatever the browser claims it is.
     familyMemberPrice: { type: Number, default: 101 },
+    // Added to the order when the devotee opts into prasad delivery. Same
+    // reasoning as familyMemberPrice — on the document so verifyOrderAmount
+    // can recompute it server-side. Reads fall back to PRASAD_PRICE_INR for
+    // the documents written before this field existed.
+    prasadPrice: { type: Number, default: PRASAD_PRICE_INR },
     // When present these replace the base + per-member pricing above: the
     // chosen package's price is the whole order. See verifyOrderAmount.
     packages: { type: [newPoojaPackageSchema], default: [] },
