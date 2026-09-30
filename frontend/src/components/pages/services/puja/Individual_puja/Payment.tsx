@@ -182,16 +182,6 @@ const PaymentContent: React.FC = () => {
   const [packageName, setPackageName] = useState<string>("");
   const [formData, setFormData] = useState<FormField[]>([]);
 
-  // States for pincode checking
-  const [serviceAvailable, setServiceAvailable] = useState<boolean | null>(
-    null
-  );
-  const [cheapestCourier, setCheapestCourier] = useState<any>(null);
-  const [pincodeErrorMessage, setPincodeErrorMessage] = useState<string>("");
-  const [estimatedDays, setEstimatedDays] = useState<string>("");
-  // Loader specifically for pincode check
-  const [pincodeLoading, setPincodeLoading] = useState<boolean>(false);
-
   const [verifying, setVerifying] = useState(false);
 
   // Payment states
@@ -652,72 +642,6 @@ const PaymentContent: React.FC = () => {
       }),
     email: Yup.string().email("Invalid email format").notRequired(),
   });
-
-  // Handle pincode changes + serviceability check
-  const handlePincodeChange = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-    setFieldValue: (field: string, value: any) => void
-  ) => {
-    const newVal = e.target.value;
-    setFieldValue("pincode", newVal);
-
-    // Only proceed if length is exactly 6
-    if (newVal.length === 6) {
-      try {
-        setPincodeLoading(true);
-        setServiceAvailable(null);
-        setEstimatedDays("");
-        setCheapestCourier(null);
-        setPincodeErrorMessage("");
-
-        if (templeDetails && templeDetails._id) {
-          const response = await api.get(
-            `/serviceability/check?pincode=${newVal}&mandirId=${templeDetails._id}`
-          );
-          if (response.data.serviceAvailable) {
-            setServiceAvailable(true);
-            setCheapestCourier(response.data.cheapestCourier);
-
-            if (response.data.cheapestCourier?.estimated_delivery_days) {
-              setEstimatedDays(
-                response.data.cheapestCourier.estimated_delivery_days
-              );
-            } else {
-              setEstimatedDays("");
-            }
-          } else {
-            setServiceAvailable(false);
-            setCheapestCourier(null);
-            setEstimatedDays("");
-            setPincodeErrorMessage(
-              response.data.message || "Delivery not available at this pincode."
-            );
-          }
-        } else {
-          setServiceAvailable(false);
-          setPincodeErrorMessage(
-            "Temple details not loaded yet. Cannot check serviceability."
-          );
-        }
-      } catch (err: any) {
-        setServiceAvailable(false);
-        setCheapestCourier(null);
-        setEstimatedDays("");
-        setPincodeErrorMessage(
-          err.response?.data?.message || "Error while checking serviceability."
-        );
-      } finally {
-        setPincodeLoading(false);
-      }
-    } else {
-      // Reset states if not exactly 6 digits
-      setPincodeLoading(false);
-      setServiceAvailable(null);
-      setCheapestCourier(null);
-      setEstimatedDays("");
-      setPincodeErrorMessage("");
-    }
-  };
 
   const handleModalConfirm = (service: string, price: number) => {
     const serviceKey: keyof ClickedServices =
@@ -1422,12 +1346,6 @@ const PaymentContent: React.FC = () => {
               <ContactAndShippingForm
                 values={values}
                 setFieldValue={setFieldValue}
-                pincodeLoading={pincodeLoading}
-                handlePincodeChange={handlePincodeChange}
-                serviceAvailable={serviceAvailable}
-                cheapestCourier={cheapestCourier}
-                estimatedDays={estimatedDays}
-                pincodeErrorMessage={pincodeErrorMessage}
                 isMobile={false}
               />
 
@@ -1489,9 +1407,7 @@ const PaymentContent: React.FC = () => {
                   <Button
                     type="primary"
                     htmlType="submit"
-                    disabled={
-                      pincodeLoading || isSubmitting || isBookingDisabled
-                    }
+                    disabled={isSubmitting || isBookingDisabled}
                     className="w-full flex items-center justify-center rounded-xl h-12 text-base font-bold shadow-[0_8px_20px_rgba(255,90,0,0.3)] payment-pay-btn hover:scale-[1.02] active:scale-[0.98] transition-all"
                     style={{ background: 'linear-gradient(135deg, #ff5a00, #ff8a00)', borderColor: 'transparent', borderRadius: 12 }}
                   >
@@ -1620,12 +1536,6 @@ const PaymentContent: React.FC = () => {
             <ContactAndShippingForm
               values={values}
               setFieldValue={setFieldValue}
-              pincodeLoading={pincodeLoading}
-              handlePincodeChange={handlePincodeChange}
-              serviceAvailable={serviceAvailable}
-              cheapestCourier={cheapestCourier}
-              estimatedDays={estimatedDays}
-              pincodeErrorMessage={pincodeErrorMessage}
               isMobile={true}
             />
 
@@ -1697,7 +1607,7 @@ const PaymentContent: React.FC = () => {
                 <Button
                   type="primary"
                   htmlType="submit"
-                  disabled={pincodeLoading || isSubmitting || isBookingDisabled}
+                  disabled={isSubmitting || isBookingDisabled}
                   className="w-full flex items-center justify-center rounded-xl h-12 text-base font-bold shadow-[0_8px_20px_rgba(255,90,0,0.3)] payment-pay-btn active:scale-[0.98] transition-all"
                   style={{ background: 'linear-gradient(135deg, #ff5a00, #ff8a00)', borderColor: 'transparent', borderRadius: 12 }}
                 >

@@ -570,9 +570,14 @@ export const initiateChadhavaPayment = async (req: Request, res: Response) => {
        * The cart value BEFORE any coupon, and the code to apply to it. A client
        * that sends neither — the app, or any build older than this — falls back
        * to `totalPrice` and is priced exactly as it was before.
+       *
+       * The code is only honoured alongside an explicit `subtotal`. Without one,
+       * the only figure available is `totalPrice`, which the client has already
+       * discounted — resolving the code against it would take the discount twice.
        */
       subtotal: Number(body.subtotal ?? body.totalPrice ?? body.amount ?? 0),
-      promoCode: typeof body.promoCode === "string" ? body.promoCode.trim() : "",
+      promoCode:
+        typeof body.promoCode === "string" && body.subtotal != null ? body.promoCode.trim() : "",
       address: body.address ?? undefined,
       referralCode: body.referralCode ?? null,
       giftSelected: body.giftSelected ?? null,

@@ -3,7 +3,7 @@ import axios from "axios";
 import { Parser } from "@json2csv/plainjs";
 
 import PoojaBooking, { type IPoojaBooking } from "./poojaBooking.model";
-import NewPooja, { PRASAD_PRICE_INR } from "./newPooja.model";
+import NewPooja, { resolvePrasadPrice } from "./newPooja.model";
 import PendingBooking, { type IPendingBooking } from "./pendingPoojaBooking.model";
 import { findPitruPujaBookingsByMobile } from "../pitru-puja/pitruPujaBooking.profile";
 import { env } from "../../config/env";
@@ -591,6 +591,9 @@ const verifyOrderAmount = async (
   const extraMembers = Math.max(0, (bookingDetails?.bhaktaNames?.length || 1) - 1);
   const packages = Array.isArray(pooja.packages) ? pooja.packages : [];
 
+  // Every catalog price goes through Number(): the external admin tool writes
+  // these documents and `.lean()` skips schema casting, so a price stored as a
+  // string would otherwise concatenate below ("501" + 298) instead of adding.
   let expectedRupees: number;
   if (packages.length > 0) {
     /**
@@ -609,20 +612,22 @@ const verifyOrderAmount = async (
     if (extraMembers > maxFamilyMembers) {
       return `Package "${pkg.label}" covers up to ${maxFamilyMembers} family member(s), got ${extraMembers}.`;
     }
-    expectedRupees = pkg.price;
+    expectedRupees = Number(pkg.price);
   } else {
-    const base = pooja.discountPrice ?? pooja.originalPrice ?? 0;
-    expectedRupees = base + extraMembers * (pooja.familyMemberPrice ?? 101);
+    const base = Number(pooja.discountPrice ?? pooja.originalPrice ?? 0);
+    expectedRupees = base + extraMembers * Number(pooja.familyMemberPrice ?? 101);
   }
 
   /**
    * Prasad delivery is a flat add-on on top of either pricing path.
    * `isAddressSelected` is the booking's own record of the devotee opting in —
    * the same flag every downstream prasad consumer is gated behind — so it is
-   * what decides whether they are charged for it.
+   * what decides whether they are charged for it. A pooja that does not offer
+   * prasad cannot be charged for it, whatever the request says.
    */
   if (bookingDetails?.isAddressSelected) {
-    expectedRupees += pooja.prasadPrice ?? PRASAD_PRICE_INR;
+    if (!pooja.isPrasadAvailable) return "Prasad delivery is not available for this pooja.";
+    expectedRupees += resolvePrasadPrice(pooja.prasadPrice);
   }
 
   // compare in paise; prices may carry decimals, so never trust float equality

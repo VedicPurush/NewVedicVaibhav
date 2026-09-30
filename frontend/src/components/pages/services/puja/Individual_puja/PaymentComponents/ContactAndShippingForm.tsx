@@ -1,31 +1,19 @@
 "use client";
 
 import React from "react";
-import { Row, Col, Spin } from "antd";
+import { Row, Col } from "antd";
 import { Field, ErrorMessage } from "formik";
 import PujaTextField from "../TextField";
 
 interface ContactAndShippingFormProps {
     values: any;
     setFieldValue: (field: string, value: any, shouldValidate?: boolean) => void;
-    pincodeLoading: boolean;
-    handlePincodeChange: (e: React.ChangeEvent<HTMLInputElement>, setFieldValue: any) => void;
-    serviceAvailable: boolean | null;
-    cheapestCourier: any;
-    estimatedDays: string;
-    pincodeErrorMessage: string;
     isMobile?: boolean;
 }
 
 export const ContactAndShippingForm: React.FC<ContactAndShippingFormProps> = ({
     values,
     setFieldValue,
-    pincodeLoading,
-    handlePincodeChange,
-    serviceAvailable,
-    cheapestCourier,
-    estimatedDays,
-    pincodeErrorMessage,
     isMobile = false,
 }) => {
     const normalizeMobile = (mobile: string) => {
@@ -131,36 +119,17 @@ export const ContactAndShippingForm: React.FC<ContactAndShippingFormProps> = ({
                         <Col span={24}>
                             <Field name="pincode">
                                 {({ field }: { field: any }) => (
-                                    <div className="flex items-center">
-                                        <div className="flex-1">
-                                            <PujaTextField
-                                                {...field}
-                                                labelText="Pincode"
-                                                placeholder="6-digit pincode"
-                                                onChange={(e: any) => handlePincodeChange(e, setFieldValue)}
-                                            />
-                                        </div>
-                                        {pincodeLoading && (
-                                            <Spin size="small" style={{ marginLeft: "12px", marginTop: "15px" }} />
-                                        )}
-                                    </div>
+                                    <PujaTextField
+                                        {...field}
+                                        labelText="Pincode"
+                                        placeholder="6-digit pincode"
+                                        onChange={(e: any) => setFieldValue("pincode", e.target.value)}
+                                    />
                                 )}
                             </Field>
                             <div className="text-red-500 text-xs mt-1">
                                 <ErrorMessage name="pincode" />
                             </div>
-
-                            {serviceAvailable === true && cheapestCourier && (
-                                <div className="text-green-700 text-xs mt-1 pl-1">
-                                    ✓ Delivery is available. Estimated delivery in {estimatedDays || "X"} days.
-                                </div>
-                            )}
-
-                            {serviceAvailable === false && pincodeErrorMessage && (
-                                <div className="text-red-500 text-xs mt-1 pl-1">
-                                    {pincodeErrorMessage}
-                                </div>
-                            )}
                         </Col>
 
                         <Col span={24} md={12}>

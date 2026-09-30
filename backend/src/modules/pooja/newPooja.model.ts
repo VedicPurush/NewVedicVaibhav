@@ -106,6 +106,17 @@ export interface INewPooja extends Document {
  */
 export const PRASAD_PRICE_INR = 298;
 
+/**
+ * The prasad charge a pooja document carries. Must stay identical to
+ * resolvePrasadPrice in the frontend's newPujaShared.tsx: if the two disagree
+ * by a rupee, verifyOrderAmount rejects every prasad order. A 0 is a real
+ * price (free prasad), so only a missing or unreadable value falls back.
+ */
+export const resolvePrasadPrice = (value: unknown): number => {
+  const price = Number(value ?? PRASAD_PRICE_INR);
+  return Number.isFinite(price) && price >= 0 ? price : PRASAD_PRICE_INR;
+};
+
 const newPoojaPackageSchema = new Schema<INewPoojaPackage>(
   {
     personCount: { type: Number, required: true },

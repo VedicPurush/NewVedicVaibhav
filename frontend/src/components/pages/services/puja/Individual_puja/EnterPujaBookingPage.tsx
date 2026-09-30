@@ -94,7 +94,7 @@ const EnterPujaBookingPage = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
-  // Prasad delivery — only offered when the puja's mandir has it available.
+  // Prasad delivery — only offered when the puja has it marked available.
   const [needPrasad, setNeedPrasad] = useState(false);
   const [address1, setAddress1] = useState("");
   const [address2, setAddress2] = useState("");
@@ -595,9 +595,6 @@ const EnterPujaBookingPage = () => {
               className={inputClass}
               style={{ color: P.ink }}
             />
-            <span className="flex items-center pr-3 text-[12px] min-[360px]:text-[13px] whitespace-nowrap shrink-0 text-stone-400">
-              and family
-            </span>
           </div>
           <FieldError message={errors.name} />
           <p className="text-[12px] mt-2" style={{ color: P.inkSoft }}>

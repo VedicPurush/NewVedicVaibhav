@@ -85,6 +85,17 @@ export const toPaise = (rupees: number) => Math.round((Number(rupees) || 0) * 10
  */
 export const PRASAD_PRICE_INR = 298;
 
+/**
+ * The prasad charge a pooja document carries. Must stay identical to
+ * resolvePrasadPrice in backend newPooja.model.ts: if the two disagree by a
+ * rupee, verifyOrderAmount rejects every prasad order. A 0 is a real price
+ * (free prasad), so only a missing or unreadable value falls back.
+ */
+export const resolvePrasadPrice = (value: unknown): number => {
+  const price = Number(value ?? PRASAD_PRICE_INR);
+  return Number.isFinite(price) && price >= 0 ? price : PRASAD_PRICE_INR;
+};
+
 export const STATIC = {
   bannerTitle: "Reserve Your Sankalp",
   shastraQuoteIntro: "The shastra says:",
@@ -197,20 +208,22 @@ export const buildViewModel = (
     isExpired,
 
     /**
-     * Whether this puja's prasad can be shipped. New poojas carry the flag on
-     * the document itself (same placement as `isIdolAvailable`); legacy poojas
-     * carry it on their referenced Mandir, so it reads `false` until that
-     * second fetch lands and the prasad section only appears once the answer
-     * is actually known.
+     * Whether this puja offers prasad delivery. New poojas carry the flag on
+     * the document itself (set from admin); legacy poojas carry it on their
+     * referenced Mandir, so it reads `false` until that second fetch lands and
+     * the prasad section only appears once the answer is actually known.
+     *
+     * ⚠️ A new pooja's mandirDetails has no real Mandir ref, so dispatch
+     * (Pandit.findOne({ mandirId })) finds no pickup pandit for it — prasad
+     * orders on new poojas have to be shipped by hand until that ref exists.
      */
     isPrasadAvailable: isNew ? !!pooja?.isPrasadAvailable : !!mandir?.isPrasadAvailable,
 
     /**
      * Flat charge added when the devotee opts into prasad delivery. Must match
-     * what verifyOrderAmount recomputes server-side (`prasadPrice` on the pooja,
-     * falling back to the same constant) or the order is rejected.
+     * what verifyOrderAmount recomputes server-side or the order is rejected.
      */
-    prasadPrice: Number(pooja?.prasadPrice) || PRASAD_PRICE_INR,
+    prasadPrice: resolvePrasadPrice(pooja?.prasadPrice),
 
     basePrice,
     // shown struck through when it is genuinely higher than what is charged
