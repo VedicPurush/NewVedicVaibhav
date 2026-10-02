@@ -3,8 +3,11 @@
    :focus states, which inline styles cannot express, and because overriding
    antd's own primary-button hover requires beating it on selector specificity. */
 
+/* !important: Navbar.css zeroes padding on every .ant-modal-content with
+   !important, which pushed this modal's content flush against its edges. */
 .vv-logout-modal .ant-modal-content {
-  padding: 28px 24px 24px;
+  padding: 28px 24px 24px !important;
+  overflow: hidden;
   border-radius: 18px;
   background: #ffffff;
   box-shadow: 0 18px 48px rgba(76, 29, 9, 0.18);
@@ -49,7 +52,7 @@
   gap: 12px;
 }
 
-.vv-logout-modal__actions .ant-btn {
+.vv-logout-modal .vv-logout-modal__actions .ant-btn {
   flex: 1;
   height: 44px;
   border-radius: 12px;
@@ -59,14 +62,14 @@
 }
 
 /* Stay — brand-coloured, and the action the copy is asking for. */
-.vv-logout-modal__actions .ant-btn.vv-logout-modal__stay {
+.vv-logout-modal .vv-logout-modal__actions .ant-btn.vv-logout-modal__stay {
   background: #ff6b00;
   border-color: #ff6b00;
   color: #ffffff;
 }
 
-.vv-logout-modal__actions .ant-btn.vv-logout-modal__stay:hover,
-.vv-logout-modal__actions .ant-btn.vv-logout-modal__stay:focus-visible {
+.vv-logout-modal .vv-logout-modal__actions .ant-btn.vv-logout-modal__stay:hover,
+.vv-logout-modal .vv-logout-modal__actions .ant-btn.vv-logout-modal__stay:focus-visible {
   background: #e85f00;
   border-color: #e85f00;
   color: #ffffff;
@@ -74,14 +77,14 @@
 
 /* Log Out — quieter, but never hidden or greyed out: it stays a plainly
    labelled, full-size button, because burying the exit is a dark pattern. */
-.vv-logout-modal__actions .ant-btn.vv-logout-modal__confirm {
+.vv-logout-modal .vv-logout-modal__actions .ant-btn.vv-logout-modal__confirm {
   background: #ffffff;
   border-color: #e5e7eb;
   color: #dc2626;
 }
 
-.vv-logout-modal__actions .ant-btn.vv-logout-modal__confirm:hover,
-.vv-logout-modal__actions .ant-btn.vv-logout-modal__confirm:focus-visible {
+.vv-logout-modal .vv-logout-modal__actions .ant-btn.vv-logout-modal__confirm:hover,
+.vv-logout-modal .vv-logout-modal__actions .ant-btn.vv-logout-modal__confirm:focus-visible {
   background: #fef2f2;
   border-color: #fecaca;
   color: #b91c1c;

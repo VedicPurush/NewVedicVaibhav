@@ -42,7 +42,7 @@ const menuItems = [
   { key: "my-coupons", label: "🎁 My Coupons" },
   { key: "chadhava", label: "Chadhava Bookings" },
   { key: "4-dham-yatra", label: "4-Dham Bookings" },
-  { key: "gau-seva", label: "Gau Seva Bookings" },
+  // { key: "gau-seva", label: "Gau Seva Bookings" },
   { key: "pooja", label: "Pooja Bookings" },
   { key: "personalized", label: "Personalized Bookings" },
   { key: "banke-bihari", label: "Banke Bihariji Bookings" },

@@ -571,7 +571,15 @@ const EnterPujaDetailsPage: React.FC<EnterPujaDetailsPageProps> = ({ pujaId }) =
         modal: {
           ondismiss: () => setIsSubmitting(false),
         },
-        prefill: { name: kartaName.trim() || "Devotee", contact: whatsappNumber.trim() },
+        // Razorpay shows its own "Contact details" screen unless BOTH contact and
+        // email are prefilled — this form has no email field, so fall back to the
+        // same phone-based placeholder the other checkouts use.
+        prefill: {
+          name: kartaName.trim() || "Devotee",
+          contact: digitsOf(whatsappNumber),
+          email: `${digitsOf(whatsappNumber).slice(-10)}@gmail.com`,
+        },
+        readonly: { contact: true, email: true },
         theme: { color: MAROON },
       });
 

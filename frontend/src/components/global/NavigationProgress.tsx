@@ -27,6 +27,25 @@ const emitNavStart = () => {
   });
 };
 
+/**
+ * True when `href` resolves to the route already on screen. Such a navigation
+ * never moves `usePathname`/`useSearchParams`, so nothing would ever finish the
+ * spinner — e.g. tapping the profile icon while already on /profile.
+ */
+const isCurrentRoute = (href: unknown) => {
+  if (typeof href !== "string") return false;
+  try {
+    const url = new URL(href, window.location.href);
+    return (
+      url.origin === window.location.origin &&
+      url.pathname === window.location.pathname &&
+      url.search === window.location.search
+    );
+  } catch {
+    return false;
+  }
+};
+
 const PATCHED = "__vvNavigationProgressPatched";
 
 /**
@@ -48,12 +67,12 @@ function patchRouter(router: Record<string, unknown>) {
     if (typeof push !== "function") return;
 
     router.push = function patchedPush(this: unknown, ...args: unknown[]) {
-      emitNavStart();
+      if (!isCurrentRoute(args[0])) emitNavStart();
       return (push as (...a: unknown[]) => unknown).apply(this, args);
     };
     if (typeof replace === "function") {
       router.replace = function patchedReplace(this: unknown, ...args: unknown[]) {
-        emitNavStart();
+        if (!isCurrentRoute(args[0])) emitNavStart();
         return (replace as (...a: unknown[]) => unknown).apply(this, args);
       };
     }
@@ -78,7 +97,7 @@ export default function NavigationProgress() {
 
   const active = useRef(false);
   const timeouts = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const doneRef = useRef<() => void>(() => {});
+  const doneRef = useRef<() => void>(() => { });
   // The route currently rendered — compared against `location` on popstate.
   const renderedRoute = useRef({ pathname, search });
 
